@@ -1,0 +1,29 @@
+# Evaluation sandbox for running HumanEval tests
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    datasets \
+    requests \
+    tqdm \
+    openai
+
+# Copy evaluation scripts
+COPY scripts/ /app/scripts/
+COPY prompts/ /app/prompts/
+
+# Create results directory
+RUN mkdir -p /app/results
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+CMD ["python", "/app/scripts/run_evaluation.py"]

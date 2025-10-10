@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+results/
+*.jsonl
+*.json
+!pyproject.toml
+!package.json
+
+# Model cache
+.cache/
+*.bin
+*.safetensors
+models/
+
+# Docker
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+temp/
+
+# UV lock file (optional - uncomment if you want to gitignore it)
+# uv.lock

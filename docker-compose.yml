@@ -1,0 +1,46 @@
+services:
+  llamacpp-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.llamacpp
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B
+      - PORT=8000
+      - HOST=0.0.0.0
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+    # GPU support disabled for CPU/Mac - uncomment for NVIDIA GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Evaluation sandbox container
+  eval-sandbox:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.eval
+    depends_on:
+      llamacpp-server:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/app/scripts
+      - ./prompts:/app/prompts
+      - ./results:/app/results
+    environment:
+      - LLAMACPP_API_URL=http://llamacpp-server:8000/v1
+    network_mode: "service:llamacpp-server"
+
+volumes:
+  huggingface_cache:
