@@ -11,10 +11,11 @@ cd "$PROJECT_ROOT"
 
 case "$1" in
     start)
-        echo "Starting llama.cpp model server..."
-        docker compose up -d llamacpp-server
+        echo "Starting vLLM model server..."
+        docker compose up -d vllm-server
         echo "Waiting for server to be healthy..."
-        sleep 10
+        echo "This may take 1-2 minutes for model download and loading..."
+        sleep 30
         echo "Server started! API available at http://localhost:8000"
         ;;
 
@@ -30,14 +31,15 @@ case "$1" in
         ;;
 
     logs)
-        docker compose logs -f llamacpp-server
+        docker compose logs -f vllm-server
         ;;
 
     test)
-        echo "Testing llama.cpp API endpoint..."
+        echo "Testing vLLM API endpoint..."
         curl -X POST http://localhost:8000/v1/completions \
             -H "Content-Type: application/json" \
             -d '{
+                "model": "Qwen/Qwen2.5-Coder-0.5B",
                 "prompt": "def hello_world():",
                 "max_tokens": 50,
                 "temperature": 0.7
@@ -53,10 +55,10 @@ case "$1" in
         echo "Usage: $0 {start|stop|restart|logs|test|eval}"
         echo ""
         echo "Commands:"
-        echo "  start   - Start the llama.cpp model server"
+        echo "  start   - Start the vLLM model server"
         echo "  stop    - Stop all services"
         echo "  restart - Restart all services"
-        echo "  logs    - Show llama.cpp server logs"
+        echo "  logs    - Show vLLM server logs"
         echo "  test    - Test the API endpoint"
         echo "  eval    - Run HumanEval evaluation"
         exit 1

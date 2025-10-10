@@ -1,0 +1,21 @@
+# vLLM server for GPU/CPU inference
+FROM vllm/vllm-openai:latest
+
+# Set environment variables
+ENV MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B
+ENV PORT=8000
+ENV HOST=0.0.0.0
+
+# Expose the API port
+EXPOSE 8000
+
+# Start vLLM server with OpenAI-compatible API
+# Using environment variables for configuration
+CMD python3 -m vllm.entrypoints.openai.api_server \
+    --model ${MODEL_NAME} \
+    --host ${HOST} \
+    --port ${PORT} \
+    --max-model-len 2048 \
+    --gpu-memory-utilization 0.9 \
+    --dtype auto \
+    --trust-remote-code

@@ -1,8 +1,8 @@
 services:
-  llamacpp-server:
+  vllm-server:
     build:
       context: .
-      dockerfile: docker/Dockerfile.llamacpp
+      dockerfile: docker/Dockerfile.vllm
     ports:
       - "8000:8000"
     environment:
@@ -11,20 +11,21 @@ services:
       - HOST=0.0.0.0
     volumes:
       - huggingface_cache:/root/.cache/huggingface
-    # GPU support disabled for CPU/Mac - uncomment for NVIDIA GPU
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+    # GPU support - comment out for CPU-only mode
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 120s
+    shm_size: '2gb'  # Required for vLLM
 
   # Evaluation sandbox container
   eval-sandbox:
@@ -32,15 +33,15 @@ services:
       context: .
       dockerfile: docker/Dockerfile.eval
     depends_on:
-      llamacpp-server:
+      vllm-server:
         condition: service_healthy
     volumes:
       - ./scripts:/app/scripts
       - ./prompts:/app/prompts
       - ./results:/app/results
     environment:
-      - LLAMACPP_API_URL=http://llamacpp-server:8000/v1
-    network_mode: "service:llamacpp-server"
+      - VLLM_API_URL=http://vllm-server:8000/v1
+    network_mode: "service:vllm-server"
 
 volumes:
   huggingface_cache:
