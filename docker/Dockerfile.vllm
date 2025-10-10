@@ -1,5 +1,6 @@
 # vLLM server for GPU/CPU inference
-FROM vllm/vllm-openai:latest
+# Using v0.6.3.post1 for stability (v0.11+ has V1 engine bugs with T4 GPUs)
+FROM vllm/vllm-openai:v0.6.3.post1
 
 # Set environment variables
 ENV MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B
@@ -11,5 +12,6 @@ EXPOSE 8000
 
 # Start vLLM server with OpenAI-compatible API
 # Override the default ENTRYPOINT and use shell form to expand variables
+# Use --dtype half for T4 GPU (compute capability 7.5 doesn't support bfloat16)
 ENTRYPOINT []
-CMD ["/bin/bash", "-c", "python3 -m vllm.entrypoints.openai.api_server --model $MODEL_NAME --host $HOST --port $PORT --max-model-len 2048 --gpu-memory-utilization 0.9 --dtype auto --trust-remote-code"]
+CMD ["/bin/bash", "-c", "python3 -m vllm.entrypoints.openai.api_server --model $MODEL_NAME --host $HOST --port $PORT --max-model-len 2048 --gpu-memory-utilization 0.9 --dtype half --trust-remote-code"]

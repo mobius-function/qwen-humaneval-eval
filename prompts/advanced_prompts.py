@@ -114,18 +114,18 @@ def enhanced_post_process(completion: str, prompt: str) -> str:
     if completion.startswith(prompt):
         completion = completion[len(prompt):]
 
-    # Strip leading/trailing whitespace
-    completion = completion.strip()
+    # Strip only trailing whitespace to preserve indentation
+    completion = completion.rstrip()
 
     # Remove markdown code blocks
     if '```python' in completion:
         match = re.search(r'```python\s*(.*?)\s*```', completion, re.DOTALL)
         if match:
-            completion = match.group(1).strip()
+            completion = match.group(1).rstrip()
     elif '```' in completion:
         parts = completion.split('```')
         if len(parts) >= 2:
-            completion = parts[1].strip()
+            completion = parts[1].rstrip()
             # Remove language identifier if present
             if completion.startswith('python\n'):
                 completion = completion[7:]
@@ -148,14 +148,7 @@ def enhanced_post_process(completion: str, prompt: str) -> str:
     while lines and lines[-1].strip().startswith('#'):
         lines.pop()
 
-    completion = '\n'.join(lines).strip()
-
-    # Ensure proper indentation (function body should be indented)
-    if completion and not completion[0].isspace():
-        # Add default indentation if missing
-        lines = completion.split('\n')
-        indented_lines = ['    ' + line if line.strip() else line for line in lines]
-        completion = '\n'.join(indented_lines)
+    completion = '\n'.join(lines).rstrip()
 
     return completion
 
@@ -175,12 +168,6 @@ def smart_post_process(completion: str, prompt: str, entry_point: str = None) ->
     # First apply enhanced post-processing
     cleaned = enhanced_post_process(completion, prompt)
 
-    # Validate indentation
-    if cleaned and not any(line.startswith('    ') or line.startswith('\t') for line in cleaned.split('\n') if line.strip()):
-        # No indentation found, add it
-        lines = cleaned.split('\n')
-        cleaned = '\n'.join('    ' + line if line.strip() else line for line in lines)
-
     # Remove any incomplete lines at the end
     lines = cleaned.split('\n')
     while lines:
@@ -194,7 +181,7 @@ def smart_post_process(completion: str, prompt: str, entry_point: str = None) ->
 
     cleaned = '\n'.join(lines)
 
-    return cleaned.strip()
+    return cleaned.rstrip()
 
 
 # Mapping of strategy names to prompt functions
