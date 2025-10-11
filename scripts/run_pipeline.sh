@@ -20,7 +20,7 @@ API_URL=${API_URL:-"http://localhost:8000/v1"}
 # Check if vLLM server is running
 echo "Checking vLLM server..."
 if ! curl -s -f "${API_URL}/models" > /dev/null 2>&1; then
-    echo "❌ vLLM server not responding at ${API_URL}"
+    echo "vLLM server not responding at ${API_URL}"
     echo "Start it with: ./scripts/manage_services.sh start"
     exit 1
 fi

@@ -120,7 +120,7 @@ def evaluate_completions(
     if pass_at_1 > 0.5:
         print("SUCCESS! pass@1 > 0.5 achieved!")
     else:
-        print(f"❌ Target not met. Need to improve by {(0.5 - pass_at_1)*100:.1f}%")
+        print(f"Target not met. Need to improve by {(0.5 - pass_at_1)*100:.1f}%")
 
     print(f"\nDetailed results saved to: {output_file}")
 

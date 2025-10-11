@@ -402,10 +402,10 @@ All stages run concurrently.
 ## 5. Implementation Priority
 
 ### Quick Wins (1-2 days)
-1. ✅ Batched inference (5-8x speedup)
-2. ✅ Parallel evaluation (8x speedup on 8 cores)
-3. ✅ vLLM optimization flags (2x speedup)
-4. ✅ Pass@k sampling (2x quality improvement)
+1. Batched inference (5-8x speedup)
+2. Parallel evaluation (8x speedup on 8 cores)
+3. vLLM optimization flags (2x speedup)
+4. Pass@k sampling (2x quality improvement)
 
 ### Medium Effort (1 week)
 5. Self-refinement loop (15% quality improvement)

@@ -159,9 +159,9 @@ def find_best_config(test_samples: int = 20, full_eval: bool = False):
                 print(f"Passed: {full_result['passed']}/{full_result['total']}")
 
                 if full_result['pass@1'] > 0.5:
-                    print("\n🎉 SUCCESS! pass@1 > 0.5 achieved!")
+                    print("\nSUCCESS! pass@1 > 0.5 achieved!")
                 else:
-                    print(f"\n❌ Need {(0.5 - full_result['pass@1'])*100:.1f}% improvement")
+                    print(f"\nNeed {(0.5 - full_result['pass@1'])*100:.1f}% improvement")
 
         # Generate recommended command
         print("\nRecommended inference command:")
