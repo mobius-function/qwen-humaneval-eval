@@ -14,11 +14,8 @@ from sandbox import check_correctness
 
 def load_completions(completions_file: str) -> List[Dict]:
     """Load completions from JSONL file."""
-    completions = []
     with open(completions_file, 'r') as f:
-        for line in f:
-            completions.append(json.loads(line))
-    return completions
+        return [json.loads(line) for line in f]
 
 
 def load_humaneval_tests() -> Dict[str, Dict]:
