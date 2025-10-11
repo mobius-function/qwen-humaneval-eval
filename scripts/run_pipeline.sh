@@ -24,7 +24,7 @@ if ! curl -s -f "${API_URL}/models" > /dev/null 2>&1; then
     echo "Start it with: ./scripts/manage_services.sh start"
     exit 1
 fi
-echo "✅ vLLM server is running"
+echo "vLLM server is running"
 
 # Run inference
 echo ""

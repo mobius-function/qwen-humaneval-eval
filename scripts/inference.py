@@ -153,7 +153,7 @@ def run_inference(
             for r in results:
                 f.write(json.dumps(r) + "\n")
 
-    print(f"\n✅ Saved {len(results)} completions to {output_path}")
+    print(f"\nSaved {len(results)} completions to {output_path}")
     return results
 
 
