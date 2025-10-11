@@ -4,8 +4,6 @@
 
 This project evaluates the **Qwen/Qwen2.5-Coder-0.5B** model's code generation capabilities using the **HumanEval benchmark**. The goal is to achieve a **pass@1 score > 0.5** (50% of coding problems solved correctly on the first attempt).
 
-**Current Achievement**: pass@1 = **0.561 (56.1%)** ✓
-
 ### What This Project Does
 
 1. **Serves** the Qwen2.5-Coder model using vLLM (fast inference server)
@@ -96,7 +94,7 @@ Passed:           92
 Failed:           72
 pass@1:           0.561 (56.1%)
 ==================================================
-✓ SUCCESS! pass@1 > 0.5 achieved!
+SUCCESS! pass@1 > 0.5 achieved!
 ```
 
 ### Output Files
@@ -223,7 +221,7 @@ The default configuration uses **infilling** strategy with **smart post-processi
 
 | Configuration | pass@1 | Status |
 |--------------|--------|--------|
-| infilling + smart (T=0.2) | **0.561** | ✓ Target achieved |
+| infilling + smart (T=0.2) | **0.561** | Target achieved |
 | minimal + smart (T=0.2) | 0.537 | Close |
 | instructional + smart (T=0.1) | 0.524 | Close |
 | infilling + basic (T=0.2) | 0.512 | Passing |
@@ -244,4 +242,4 @@ This project is for educational and evaluation purposes.
 
 ---
 
-**Achievement**: pass@1 = **0.561** (> 0.5 target) ✓
+**Achievement**: pass@1 = **0.561** (> 0.5 target)
