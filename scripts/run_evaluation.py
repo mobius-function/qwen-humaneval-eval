@@ -7,9 +7,13 @@ from pathlib import Path
 from typing import List, Dict
 
 from datasets import load_dataset
+from rich.console import Console
+from rich.table import Table
 from tqdm import tqdm
 
 from sandbox import check_correctness
+
+console = Console()
 
 
 def load_completions(completions_file: str) -> List[Dict]:
@@ -47,24 +51,24 @@ def evaluate_completions(
     Returns:
         Evaluation results dictionary
     """
-    print("Loading completions...")
+    console.print("Loading completions...", style="cyan")
     completions = load_completions(completions_file)
 
-    print("Loading HumanEval test cases...")
+    console.print("Loading HumanEval test cases...", style="cyan")
     tests = load_humaneval_tests()
 
     results = []
     passed_count = 0
     total_count = len(completions)
 
-    print(f"\nEvaluating {total_count} completions...")
+    console.print(f"\nEvaluating {total_count} completions...", style="cyan bold")
 
     for completion in tqdm(completions, desc="Evaluating"):
         task_id = completion["task_id"]
         full_code = completion["full_code"]
 
         if task_id not in tests:
-            print(f"Warning: No test found for {task_id}")
+            console.print(f"Warning: No test found for {task_id}", style="yellow")
             continue
 
         test_info = tests[task_id]
@@ -107,22 +111,25 @@ def evaluate_completions(
     with open(output_path, 'w') as f:
         json.dump(evaluation_summary, f, indent=2)
 
-    # Print summary
-    print("\n" + "=" * 50)
-    print("EVALUATION RESULTS")
-    print("=" * 50)
-    print(f"Total problems:    {total_count}")
-    print(f"Passed:           {passed_count}")
-    print(f"Failed:           {total_count - passed_count}")
-    print(f"pass@1:           {pass_at_1:.3f} ({pass_at_1*100:.1f}%)")
-    print("=" * 50)
+    # Print summary with Rich table
+    console.print()
+    table = Table(title="EVALUATION RESULTS", show_header=True, header_style="bold magenta")
+    table.add_column("Metric", style="cyan", width=20)
+    table.add_column("Value", style="green", width=20)
+
+    table.add_row("Total problems", str(total_count))
+    table.add_row("Passed", str(passed_count))
+    table.add_row("Failed", str(total_count - passed_count))
+    table.add_row("pass@1", f"{pass_at_1:.3f} ({pass_at_1*100:.1f}%)")
+
+    console.print(table)
 
     if pass_at_1 > 0.5:
-        print("SUCCESS! pass@1 > 0.5 achieved!")
+        console.print("\nSUCCESS! pass@1 > 0.5 achieved!", style="bold green")
     else:
-        print(f"Target not met. Need to improve by {(0.5 - pass_at_1)*100:.1f}%")
+        console.print(f"\nTarget not met. Need to improve by {(0.5 - pass_at_1)*100:.1f}%", style="bold red")
 
-    print(f"\nDetailed results saved to: {output_file}")
+    console.print(f"\nDetailed results saved to: {output_file}", style="dim")
 
     return evaluation_summary
 
@@ -135,10 +142,10 @@ def analyze_failures(results_file: str = "results/evaluation_results.json"):
     failed_results = [r for r in data["results"] if not r["passed"]]
 
     if not failed_results:
-        print("No failures to analyze!")
+        console.print("No failures to analyze!", style="green")
         return
 
-    print(f"\nAnalyzing {len(failed_results)} failures...")
+    console.print(f"\n[cyan]Analyzing {len(failed_results)} failures...[/cyan]")
 
     # Categorize errors
     error_types = {}
@@ -150,15 +157,21 @@ def analyze_failures(results_file: str = "results/evaluation_results.json"):
             error_types[error_type] = []
         error_types[error_type].append(result["task_id"])
 
-    print("\nError Distribution:")
-    print("-" * 50)
-    for error_type, tasks in sorted(error_types.items(), key=lambda x: len(x[1]), reverse=True):
-        print(f"{error_type:30} {len(tasks):3} tasks")
+    # Error distribution table
+    table = Table(title="Error Distribution", show_header=True, header_style="bold magenta")
+    table.add_column("Error Type", style="yellow", width=30)
+    table.add_column("Count", style="red", width=10, justify="right")
 
-    print("\nSample failures:")
+    for error_type, tasks in sorted(error_types.items(), key=lambda x: len(x[1]), reverse=True):
+        table.add_row(error_type, str(len(tasks)))
+
+    console.print(table)
+
+    # Sample failures
+    console.print("\n[bold]Sample failures:[/bold]")
     for i, result in enumerate(failed_results[:5]):
-        print(f"\n{i+1}. Task: {result['task_id']}")
-        print(f"   Error: {result.get('error', 'Unknown')[:100]}...")
+        console.print(f"\n[cyan]{i+1}. Task:[/cyan] {result['task_id']}")
+        console.print(f"   [red]Error:[/red] {result.get('error', 'Unknown')[:100]}...", style="dim")
 
 
 if __name__ == "__main__":
