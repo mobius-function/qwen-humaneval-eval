@@ -11,10 +11,6 @@ import requests
 from datasets import load_dataset
 from tqdm import tqdm
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
 from prompts.code_completion import create_completion_prompt, post_process_completion
 from prompts.advanced_prompts import PROMPT_STRATEGIES, POSTPROCESS_STRATEGIES
 
