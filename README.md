@@ -239,7 +239,3 @@ The default configuration uses **infilling** strategy with **smart post-processi
 ## License
 
 This project is for educational and evaluation purposes.
-
----
-
-**Achievement**: pass@1 = **0.561** (> 0.5 target)
