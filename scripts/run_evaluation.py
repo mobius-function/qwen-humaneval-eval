@@ -2,9 +2,11 @@
 """Evaluation script for HumanEval completions."""
 
 import json
+import multiprocessing
+import os
 import sys
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from datasets import load_dataset
 from rich.console import Console
@@ -35,10 +37,49 @@ def load_humaneval_tests() -> Dict[str, Dict]:
     return tests
 
 
+def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
+    """
+    Evaluate a single completion (worker function for multiprocessing).
+
+    Args:
+        args: Tuple of (completion, tests, timeout)
+
+    Returns:
+        Result dictionary with task_id, passed status, and error if any
+    """
+    completion, tests, timeout = args
+    task_id = completion["task_id"]
+    full_code = completion["full_code"]
+
+    if task_id not in tests:
+        return {
+            "task_id": task_id,
+            "passed": False,
+            "error": "No test found for task",
+        }
+
+    test_info = tests[task_id]
+    test_code = test_info["test"]
+
+    # Check correctness
+    result = check_correctness(
+        code=full_code,
+        test_code=test_code,
+        timeout=timeout,
+    )
+
+    return {
+        "task_id": task_id,
+        "passed": result["passed"],
+        "error": result.get("error"),
+    }
+
+
 def evaluate_completions(
     completions_file: str = "results/completions.jsonl",
     output_file: str = "results/evaluation_results.json",
     timeout: int = 3,
+    num_workers: int = None,
 ) -> Dict:
     """
     Evaluate generated completions against HumanEval test cases.
@@ -47,6 +88,7 @@ def evaluate_completions(
         completions_file: Path to completions JSONL file
         output_file: Path to save evaluation results
         timeout: Timeout for each test execution in seconds
+        num_workers: Number of parallel workers (default: CPU count)
 
     Returns:
         Evaluation results dictionary
@@ -57,41 +99,27 @@ def evaluate_completions(
     console.print("Loading HumanEval test cases...", style="cyan")
     tests = load_humaneval_tests()
 
-    results = []
-    passed_count = 0
     total_count = len(completions)
 
-    console.print(f"\nEvaluating {total_count} completions...", style="cyan bold")
+    # Determine number of workers
+    if num_workers is None:
+        num_workers = min(os.cpu_count() or 1, total_count)
 
-    for completion in tqdm(completions, desc="Evaluating"):
-        task_id = completion["task_id"]
-        full_code = completion["full_code"]
+    console.print(f"\nEvaluating {total_count} completions using {num_workers} workers...", style="cyan bold")
 
-        if task_id not in tests:
-            console.print(f"Warning: No test found for {task_id}", style="yellow")
-            continue
+    # Prepare arguments for parallel processing
+    eval_args = [(completion, tests, timeout) for completion in completions]
 
-        test_info = tests[task_id]
-        test_code = test_info["test"]
+    # Run evaluations in parallel
+    with multiprocessing.Pool(processes=num_workers) as pool:
+        results = list(tqdm(
+            pool.imap(evaluate_single_completion, eval_args),
+            total=total_count,
+            desc="Evaluating"
+        ))
 
-        # Check correctness
-        result = check_correctness(
-            code=full_code,
-            test_code=test_code,
-            timeout=timeout,
-        )
-
-        passed = result["passed"]
-        if passed:
-            passed_count += 1
-
-        result_entry = {
-            "task_id": task_id,
-            "passed": passed,
-            "error": result.get("error"),
-        }
-
-        results.append(result_entry)
+    # Count passed tests
+    passed_count = sum(1 for r in results if r["passed"])
 
     # Calculate pass@1
     pass_at_1 = passed_count / total_count if total_count > 0 else 0
@@ -197,6 +225,12 @@ if __name__ == "__main__":
         help="Timeout for each test in seconds",
     )
     parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Number of parallel workers (default: CPU count)",
+    )
+    parser.add_argument(
         "--analyze",
         action="store_true",
         help="Analyze failures after evaluation",
@@ -209,6 +243,7 @@ if __name__ == "__main__":
         completions_file=args.completions,
         output_file=args.output,
         timeout=args.timeout,
+        num_workers=args.workers,
     )
 
     # Analyze failures if requested
