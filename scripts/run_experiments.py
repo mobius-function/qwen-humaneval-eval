@@ -106,6 +106,9 @@ def run_single_experiment(exp_config: Dict, global_config: Dict, exp_logger: log
             'name': exp_name,
             'status': 'failed',
             'error': str(e),
+            'prompt_strategy': exp_config['prompt_strategy'],
+            'postprocess_strategy': exp_config['postprocess_strategy'],
+            'temperature': exp_config['temperature'],
         }
 
     # Step 2: Evaluation
@@ -141,6 +144,9 @@ def run_single_experiment(exp_config: Dict, global_config: Dict, exp_logger: log
             'name': exp_name,
             'status': 'failed',
             'error': str(e),
+            'prompt_strategy': exp_config['prompt_strategy'],
+            'postprocess_strategy': exp_config['postprocess_strategy'],
+            'temperature': exp_config['temperature'],
         }
 
 
@@ -179,17 +185,18 @@ def print_summary(results: List[Dict]):
                 f"{result['temperature']:.1f}",
                 f"[{status_style}]{pass_rate}[/{status_style}]",
                 passed_total,
-                f"[green]✓[/green]"
+                f"[green]Success[/green]"
             )
         else:
+            # Failed experiments still show their configuration
             table.add_row(
                 result['name'],
+                result.get('prompt_strategy', '-'),
+                result.get('postprocess_strategy', '-'),
+                f"{result.get('temperature', 0):.1f}" if result.get('temperature') else "-",
                 "-",
                 "-",
-                "-",
-                "-",
-                "-",
-                f"[red]✗[/red]"
+                f"[red]Failed[/red]"
             )
 
     console.print(table)
