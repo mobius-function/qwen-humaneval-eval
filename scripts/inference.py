@@ -5,8 +5,9 @@ import json
 import logging
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import requests
 from datasets import load_dataset
@@ -116,6 +117,54 @@ def setup_logging(output_path: str, prompt_strategy: str, postprocess_strategy: 
     return main_logger, None
 
 
+def process_single_problem(
+    problem: Dict,
+    inference: VLLMInference,
+    prompt_fn,
+    postprocess_fn,
+    temperature: float,
+) -> Dict:
+    """
+    Process a single problem: generate and post-process completion.
+
+    Args:
+        problem: HumanEval problem dictionary
+        inference: VLLMInference instance
+        prompt_fn: Prompt generation function
+        postprocess_fn: Post-processing function
+        temperature: Sampling temperature
+
+    Returns:
+        Result dictionary with completion
+    """
+    task_id = problem["task_id"]
+    prompt_text = problem["prompt"]
+    entry_point = problem.get("entry_point")
+
+    # Create prompt using selected strategy
+    full_prompt = prompt_fn(prompt_text)
+
+    # Generate completion
+    completion = inference.generate_completion(
+        prompt=full_prompt,
+        temperature=temperature,
+    )
+
+    # Post-process using selected strategy
+    cleaned_completion = postprocess_fn(completion, full_prompt, entry_point)
+
+    # Combine prompt + completion for evaluation
+    full_code = prompt_text + cleaned_completion
+
+    return {
+        "task_id": task_id,
+        "prompt": prompt_text,
+        "completion": cleaned_completion,
+        "raw_completion": completion,  # Store raw output for failure analysis
+        "full_code": full_code,
+    }
+
+
 def run_inference(
     output_path: str = "results/completions.jsonl",
     api_url: str = None,
@@ -123,9 +172,10 @@ def run_inference(
     max_samples: int = None,
     prompt_strategy: str = "infilling",
     postprocess_strategy: str = "smart",
+    num_workers: int = None,
 ):
     """
-    Run inference on HumanEval dataset.
+    Run inference on HumanEval dataset with parallel API calls.
 
     Args:
         output_path: Path to save completions
@@ -134,6 +184,7 @@ def run_inference(
         max_samples: Limit number of samples (for testing)
         prompt_strategy: Prompting strategy (minimal, infilling, instructional, fewshot, cot)
         postprocess_strategy: Post-processing strategy (basic, smart)
+        num_workers: Number of parallel workers (default: 16)
     """
     # Setup logging
     main_logger, _ = setup_logging(output_path, prompt_strategy, postprocess_strategy)
@@ -162,50 +213,50 @@ def run_inference(
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    # Generate completions
-    results = []
+    # Determine number of workers
+    if num_workers is None:
+        num_workers = 16  # Default for I/O-bound API calls
+
+    # Generate completions in parallel
     print(f"\nGenerating completions for {len(problems)} problems...")
     print(f"Prompt strategy: {prompt_strategy}")
     print(f"Postprocess strategy: {postprocess_strategy}")
     print(f"Temperature: {temperature}")
+    print(f"Workers: {num_workers}")
 
-    main_logger.info(f"Starting inference on {len(problems)} problems")
+    main_logger.info(f"Starting parallel inference on {len(problems)} problems with {num_workers} workers")
     main_logger.info(f"Configuration: strategy={prompt_strategy}, postprocess={postprocess_strategy}, temp={temperature}")
 
-    for problem in tqdm(problems, desc="Inference"):
-        task_id = problem["task_id"]
-        prompt_text = problem["prompt"]
-        entry_point = problem.get("entry_point")
-
-        # Create prompt using selected strategy
-        full_prompt = prompt_fn(prompt_text)
-
-        # Generate completion
-        completion = inference.generate_completion(
-            prompt=full_prompt,
-            temperature=temperature,
-        )
-
-        # Post-process using selected strategy
-        cleaned_completion = postprocess_fn(completion, full_prompt, entry_point)
-
-        # Combine prompt + completion for evaluation
-        full_code = prompt_text + cleaned_completion
-
-        result = {
-            "task_id": task_id,
-            "prompt": prompt_text,
-            "completion": cleaned_completion,
-            "raw_completion": completion,  # Store raw output for failure analysis
-            "full_code": full_code,
+    results = []
+    with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        # Submit all tasks
+        future_to_problem = {
+            executor.submit(
+                process_single_problem,
+                problem,
+                inference,
+                prompt_fn,
+                postprocess_fn,
+                temperature,
+            ): problem
+            for problem in problems
         }
 
-        results.append(result)
+        # Collect results as they complete
+        for future in tqdm(as_completed(future_to_problem), total=len(problems), desc="Inference"):
+            try:
+                result = future.result()
+                results.append(result)
 
-        # Save incrementally
-        with open(output_file, "w") as f:
-            for r in results:
-                f.write(json.dumps(r) + "\n")
+                # Save incrementally (sorted by task_id for consistency)
+                results_sorted = sorted(results, key=lambda x: x["task_id"])
+                with open(output_file, "w") as f:
+                    for r in results_sorted:
+                        f.write(json.dumps(r) + "\n")
+            except Exception as e:
+                problem = future_to_problem[future]
+                main_logger.error(f"Failed to process {problem['task_id']}: {e}")
+                print(f"Error processing {problem['task_id']}: {e}")
 
     print(f"\nSaved {len(results)} completions to {output_path}")
     main_logger.info(f"Completed inference: {len(results)} completions saved to {output_path}")
@@ -256,6 +307,12 @@ if __name__ == "__main__":
         choices=list(POSTPROCESS_STRATEGIES.keys()),
         help="Post-processing strategy to use",
     )
+    parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=None,
+        help="Number of parallel workers (default: 16)",
+    )
 
     args = parser.parse_args()
 
@@ -266,4 +323,5 @@ if __name__ == "__main__":
         max_samples=args.max_samples,
         prompt_strategy=args.prompt_strategy,
         postprocess_strategy=args.postprocess_strategy,
+        num_workers=args.num_workers,
     )

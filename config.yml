@@ -12,6 +12,10 @@ vllm:
     - "\n#"
     - "\nif __name__"
 
+# Inference Settings
+inference:
+  num_workers: 16  # Parallel API calls (default: 16 for I/O-bound tasks)
+
 # Evaluation Settings
 evaluation:
   timeout: 3  # Timeout per test in seconds
