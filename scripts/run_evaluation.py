@@ -69,6 +69,7 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
 
     test_info = tests[task_id]
     test_code = test_info["test"]
+    entry_point = test_info["entry_point"]
 
     # Execute test directly in this process with timeout protection
     # (we're already in an isolated Pool worker, so this is safe)
@@ -79,8 +80,12 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
 
         try:
             namespace = {}
+            # Execute the generated code
             exec(full_code, namespace)
+            # Execute the test code (defines check function)
             exec(test_code, namespace)
+            # Actually run the tests by calling check with the entry point
+            namespace['check'](namespace[entry_point])
 
             # Cancel the alarm if test completes successfully
             signal.alarm(0)
