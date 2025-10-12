@@ -197,9 +197,26 @@ def evaluate_completions(
             f.write("="*80 + "\n\n")
 
             for idx, result in enumerate(failed_results, 1):
-                f.write(f"[{idx}/{len(failed_results)}] Task: {result['task_id']}\n")
+                task_id = result['task_id']
+                f.write(f"[{idx}/{len(failed_results)}] Task: {task_id}\n")
                 f.write("="*80 + "\n")
                 f.write(f"Error: {result['error']}\n")
+                f.write("\n")
+
+                # Get the original problem and test info
+                if task_id in tests:
+                    test_info = tests[task_id]
+
+                    f.write("ORIGINAL PROBLEM:\n")
+                    f.write("-"*80 + "\n")
+                    f.write(test_info['prompt'] + "\n")
+                    f.write("\n")
+
+                    f.write("TEST CODE:\n")
+                    f.write("-"*80 + "\n")
+                    f.write(test_info['test'] + "\n")
+                    f.write("\n")
+
                 f.write("-"*80 + "\n")
 
                 if result.get('raw_completion'):
