@@ -2,6 +2,7 @@
 """Inference script to generate code completions for HumanEval dataset."""
 
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -72,6 +73,49 @@ def load_humaneval() -> List[Dict]:
     return list(dataset)
 
 
+def setup_logging(output_path: str, prompt_strategy: str, postprocess_strategy: str):
+    """
+    Setup logging for inference run.
+
+    Args:
+        output_path: Output file path (used to derive log file names)
+        prompt_strategy: Prompt strategy name
+        postprocess_strategy: Post-processing strategy name
+
+    Returns:
+        Tuple of (main_logger, debug_logger)
+    """
+    # Create logs directory
+    log_dir = Path("logs")
+    log_dir.mkdir(exist_ok=True)
+
+    # Derive experiment name from output path or use strategy names
+    output_stem = Path(output_path).stem
+    if output_stem == "completions":
+        # Default name - use strategies
+        exp_name = f"{prompt_strategy}_{postprocess_strategy}"
+    else:
+        # Use the output file name
+        exp_name = output_stem.replace("completions_", "")
+
+    # Setup main logger
+    main_logger = logging.getLogger(f"inference.{exp_name}")
+    main_logger.setLevel(logging.INFO)
+    main_logger.handlers.clear()
+
+    # Main log file handler
+    main_handler = logging.FileHandler(log_dir / f"{exp_name}.log", mode='w')
+    main_handler.setLevel(logging.INFO)
+    main_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    main_handler.setFormatter(main_formatter)
+    main_logger.addHandler(main_handler)
+
+    # Note: We no longer create a debug logger here
+    # Failure logging is now handled in run_evaluation.py after evaluation completes
+
+    return main_logger, None
+
+
 def run_inference(
     output_path: str = "results/completions.jsonl",
     api_url: str = None,
@@ -91,11 +135,15 @@ def run_inference(
         prompt_strategy: Prompting strategy (minimal, infilling, instructional, fewshot, cot)
         postprocess_strategy: Post-processing strategy (basic, smart)
     """
+    # Setup logging
+    main_logger, _ = setup_logging(output_path, prompt_strategy, postprocess_strategy)
+
     # Initialize inference client
     if api_url is None:
         api_url = os.getenv("VLLM_API_URL", "http://localhost:8000/v1")
 
     inference = VLLMInference(api_url)
+    main_logger.info(f"Initialized vLLM client at {api_url}")
 
     # Get prompt and postprocess functions
     prompt_fn = PROMPT_STRATEGIES.get(prompt_strategy, PROMPT_STRATEGIES['infilling'])
@@ -103,10 +151,12 @@ def run_inference(
 
     # Load dataset
     problems = load_humaneval()
+    main_logger.info(f"Loaded HumanEval dataset: {len(problems)} problems")
 
     if max_samples:
         problems = problems[:max_samples]
         print(f"Running on first {max_samples} samples only")
+        main_logger.info(f"Limited to first {max_samples} samples")
 
     # Create output directory
     output_file = Path(output_path)
@@ -118,6 +168,9 @@ def run_inference(
     print(f"Prompt strategy: {prompt_strategy}")
     print(f"Postprocess strategy: {postprocess_strategy}")
     print(f"Temperature: {temperature}")
+
+    main_logger.info(f"Starting inference on {len(problems)} problems")
+    main_logger.info(f"Configuration: strategy={prompt_strategy}, postprocess={postprocess_strategy}, temp={temperature}")
 
     for problem in tqdm(problems, desc="Inference"):
         task_id = problem["task_id"]
@@ -136,20 +189,6 @@ def run_inference(
         # Post-process using selected strategy
         cleaned_completion = postprocess_fn(completion, full_prompt, entry_point)
 
-        # Debug: Show before/after post-processing for first 10 examples
-        if len(results) < 10:
-            print(f"\n{'='*80}")
-            print(f"Task: {task_id}")
-            print(f"{'='*80}")
-            print(f"BEFORE POST-PROCESSING:")
-            print(f"{'-'*80}")
-            print(completion)
-            print(f"\n{'-'*80}")
-            print(f"AFTER POST-PROCESSING:")
-            print(f"{'-'*80}")
-            print(cleaned_completion)
-            print(f"{'='*80}\n")
-
         # Combine prompt + completion for evaluation
         full_code = prompt_text + cleaned_completion
 
@@ -157,6 +196,7 @@ def run_inference(
             "task_id": task_id,
             "prompt": prompt_text,
             "completion": cleaned_completion,
+            "raw_completion": completion,  # Store raw output for failure analysis
             "full_code": full_code,
         }
 
@@ -168,6 +208,9 @@ def run_inference(
                 f.write(json.dumps(r) + "\n")
 
     print(f"\nSaved {len(results)} completions to {output_path}")
+    main_logger.info(f"Completed inference: {len(results)} completions saved to {output_path}")
+    main_logger.info(f"Log files: logs/{Path(output_path).stem.replace('completions_', '')}.log")
+
     return results
 
 

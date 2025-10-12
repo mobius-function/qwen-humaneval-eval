@@ -28,10 +28,12 @@ env/
 
 # Project specific
 results/
+logs/
 *.jsonl
 *.json
 !pyproject.toml
 !package.json
+!config.yml
 
 # Model cache
 .cache/
@@ -39,7 +41,7 @@ results/
 *.safetensors
 models/
 
-# Docker
+# Docker volumes
 *.log
 
 # Temporary files

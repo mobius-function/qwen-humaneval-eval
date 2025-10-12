@@ -99,12 +99,16 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
             "task_id": task_id,
             "passed": False,
             "error": f"Timeout after {timeout} seconds",
+            "raw_completion": completion.get("raw_completion"),
+            "cleaned_completion": completion.get("completion"),
         }
     except Exception as e:
         return {
             "task_id": task_id,
             "passed": False,
             "error": str(e),
+            "raw_completion": completion.get("raw_completion"),
+            "cleaned_completion": completion.get("completion"),
         }
 
 
@@ -173,6 +177,40 @@ def evaluate_completions(
 
     with open(output_path, 'w') as f:
         json.dump(evaluation_summary, f, indent=2)
+
+    # Log failed cases with before/after post-processing
+    failed_results = [r for r in results if not r["passed"]]
+    if failed_results:
+        # Create failure log
+        log_dir = Path("logs")
+        log_dir.mkdir(exist_ok=True)
+        exp_name = output_path.stem.replace("evaluation_", "")
+        failures_log = log_dir / f"{exp_name}_failures.log"
+
+        with open(failures_log, 'w') as f:
+            f.write(f"FAILED CASES - {len(failed_results)} out of {total_count} failures\n")
+            f.write("="*80 + "\n\n")
+
+            for idx, result in enumerate(failed_results, 1):
+                f.write(f"[{idx}/{len(failed_results)}] Task: {result['task_id']}\n")
+                f.write("="*80 + "\n")
+                f.write(f"Error: {result['error']}\n")
+                f.write("-"*80 + "\n")
+
+                if result.get('raw_completion'):
+                    f.write("BEFORE POST-PROCESSING (Raw Model Output):\n")
+                    f.write("-"*80 + "\n")
+                    f.write(result['raw_completion'] + "\n")
+                    f.write("\n" + "-"*80 + "\n")
+                    f.write("AFTER POST-PROCESSING (Cleaned Output):\n")
+                    f.write("-"*80 + "\n")
+                    f.write(result.get('cleaned_completion', 'N/A') + "\n")
+                else:
+                    f.write("(Raw completion not available)\n")
+
+                f.write("\n" + "="*80 + "\n\n")
+
+        console.print(f"[dim]Failure analysis saved to: {failures_log}[/dim]")
 
     # Print summary with Rich table
     console.print()

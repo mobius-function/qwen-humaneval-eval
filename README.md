@@ -49,9 +49,35 @@ Start the model server (this will download the model on first run):
 
 Wait for the message: **"Server started!"** (~1-2 minutes on first run)
 
-### Step 3: Run the Evaluation Pipeline
+### Step 3: Run Experiments (Recommended)
 
-Execute the complete pipeline:
+**NEW: Config-based approach** - Run multiple prompt strategies and compare results:
+
+```bash
+python scripts/run_experiments.py
+```
+
+This will:
+1. Load experiment configurations from `config.yml`
+2. Run all enabled experiments (3 by default)
+3. Generate comparison table with pass@1 scores
+4. Save detailed logs for each experiment
+
+**Available commands:**
+```bash
+# List all experiments
+python scripts/run_experiments.py --list
+
+# Run specific experiment
+python scripts/run_experiments.py --experiment infilling_smart
+
+# Use custom config
+python scripts/run_experiments.py --config my_config.yml
+```
+
+### Step 3 (Alternative): Run Single Pipeline
+
+Execute the original single-configuration pipeline:
 ```bash
 ./scripts/run_pipeline.sh
 ```
@@ -65,43 +91,85 @@ This command will:
 
 ## Expected Output
 
-### During Execution
+### Config-Based Experiments
 
-You'll see progress messages like:
+When running `python scripts/run_experiments.py`, you'll see:
+
 ```
-Starting vLLM server...
-Waiting for server to be healthy...
-Server started!
+Running 3 experiment(s)...
 
-Generating completions...
-Progress: 50/164 problems completed
-Progress: 100/164 problems completed
-Progress: 164/164 problems completed
+================================================================================
+Experiment: infilling_smart
+Code infilling with TODO markers (best performance)
+================================================================================
 
-Evaluating completions...
-Evaluated 164 problems
-```
+Step 1: Running inference...
+Generating completions for 164 problems...
+Inference: 100%|████████████████████| 164/164
 
-### Final Results
+Step 2: Running evaluation...
+Evaluating 164 completions using 8 workers...
+Evaluating: 100%|████████████████████| 164/164
 
-After completion, you'll see a summary:
-```
-==================================================
-EVALUATION RESULTS
-==================================================
-Total problems:    164
-Passed:           92
-Failed:           72
-pass@1:           0.561 (56.1%)
-==================================================
-SUCCESS! pass@1 > 0.5 achieved!
+┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┓
+┃ Metric             ┃ Value              ┃
+┣━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━┫
+┃ Total problems     ┃ 164                ┃
+┃ Passed             ┃ 157                ┃
+┃ Failed             ┃ 7                  ┃
+┃ pass@1             ┃ 0.957 (95.7%)      ┃
+┗━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━┛
+
+[... experiments 2 and 3 ...]
+
+================================================================================
+                        EXPERIMENT SUMMARY
+================================================================================
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━┓
+┃ Experiment              ┃ Prompt        ┃ Postprocess┃ Temp ┃  pass@1  ┃Passed/Total┃  Status  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━┩
+│ infilling_smart         │ infilling     │ smart      │  0.2 │  0.957   │ 157/164    │    ✓     │
+│ minimal_smart           │ minimal       │ smart      │  0.2 │  0.878   │ 144/164    │    ✓     │
+│ instructional_smart     │ instructional │ smart      │  0.1 │  0.841   │ 138/164    │    ✓     │
+└─────────────────────────┴───────────────┴────────────┴──────┴──────────┴────────────┴──────────┘
+
+Best Result: infilling_smart
+  Strategy: infilling + smart
+  pass@1: 0.957 (95.7%)
+  Passed: 157/164
+
+Summary saved to: results/experiments_summary.json
 ```
 
 ### Output Files
 
-Results are saved in the `results/` directory:
-- `completions.jsonl` - Generated code completions
-- `evaluation_results.json` - Detailed evaluation results with pass/fail for each problem
+Results are organized in the following directories:
+
+**`results/`** - Evaluation results:
+- `completions_<experiment>.jsonl` - Generated code completions per experiment
+- `evaluation_<experiment>.json` - Detailed evaluation results per experiment
+- `experiments_summary.json` - Combined results from all experiments
+
+**`logs/`** - Detailed logging (NEW):
+- **`<experiment>.log`** - High-level progress log
+  - Experiment configuration and timing
+  - Number of problems processed
+  - Final pass@1 results
+  - Example: `infilling_smart.log`
+
+- **`<experiment>_failures.log`** - Failed cases analysis
+  - Only created if there are failures
+  - Shows raw model output (before post-processing)
+  - Shows cleaned output (after post-processing)
+  - Includes error messages for each failure
+  - Useful for debugging and understanding where post-processing helps/hurts
+  - Example: `infilling_smart_failures.log`
+
+- **`experiment_run_<timestamp>.log`** - Multi-experiment session log
+  - Tracks all experiments in a single run
+  - Overall progress and completion status
+  - Created when running multiple experiments together
 
 ---
 
@@ -109,20 +177,23 @@ Results are saved in the `results/` directory:
 
 ```
 .
+├── config.yml                   # ⭐ NEW: Experiment configurations
 ├── docker/
 │   ├── Dockerfile.vllm          # vLLM model server image
 │   └── Dockerfile.eval          # Evaluation sandbox image
 ├── docker-compose.yml           # Service orchestration
 ├── scripts/
-│   ├── inference.py             # Code generation script
-│   ├── run_evaluation.py        # Evaluation script
+│   ├── inference.py             # Code generation script (with logging)
+│   ├── run_evaluation.py        # Parallel evaluation script
+│   ├── run_experiments.py       # ⭐ NEW: Multi-experiment runner
 │   ├── sandbox.py               # Safe code execution
 │   ├── manage_services.sh       # Service management
-│   └── run_pipeline.sh          # Full pipeline runner
+│   └── run_pipeline.sh          # Single pipeline runner
 ├── prompts/
 │   ├── code_completion.py       # Basic prompt templates
-│   └── advanced_prompts.py      # Advanced prompt strategies
-├── results/                     # Output directory
+│   └── advanced_prompts.py      # 5 prompt strategies (infilling, minimal, etc.)
+├── results/                     # Evaluation results (per experiment)
+├── logs/                        # ⭐ NEW: Detailed execution logs
 └── README.md
 ```
 
@@ -130,23 +201,47 @@ Results are saved in the `results/` directory:
 
 ## Advanced Usage
 
-### Custom Configuration
+### Customizing Experiments
 
-You can customize the inference with different strategies:
+Edit `config.yml` to customize experiment configurations:
+
+```yaml
+experiments:
+  - name: "my_experiment"
+    description: "Custom configuration"
+    enabled: true
+    prompt_strategy: "infilling"      # Choose: minimal, infilling, instructional, fewshot, cot
+    postprocess_strategy: "smart"     # Choose: basic, smart
+    temperature: 0.2                  # Sampling temperature
+    output_file: "completions_my.jsonl"
+    results_file: "evaluation_my.json"
+```
+
+### Testing on a Subset
+
+To test on fewer problems, edit `config.yml`:
+
+```yaml
+dataset:
+  max_samples: 10  # Test on first 10 problems only
+```
+
+Or use environment variable:
+```bash
+MAX_SAMPLES=10 ./scripts/run_pipeline.sh
+```
+
+### Command-Line Inference (Legacy)
+
+You can still run inference with command-line arguments:
 
 ```bash
 python scripts/inference.py \
   --prompt-strategy infilling \
   --postprocess-strategy smart \
   --temperature 0.2 \
+  --max-samples 10 \
   --output results/my_completions.jsonl
-```
-
-### Testing on a Subset
-
-To test on fewer problems:
-```bash
-MAX_SAMPLES=10 ./scripts/run_pipeline.sh
 ```
 
 ### Service Management

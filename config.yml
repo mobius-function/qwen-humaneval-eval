@@ -1,0 +1,99 @@
+# HumanEval Evaluation Configuration
+# This file defines all experiment configurations for running inference and evaluation
+
+# vLLM Server Settings
+vllm:
+  api_url: "http://localhost:8000/v1"
+  max_tokens: 512
+  top_p: 0.95
+  stop_sequences:
+    - "\nclass "
+    - "\ndef "
+    - "\n#"
+    - "\nif __name__"
+
+# Evaluation Settings
+evaluation:
+  timeout: 3  # Timeout per test in seconds
+  num_workers: null  # null = auto-detect CPU count
+  results_dir: "results"
+
+# Dataset Settings
+dataset:
+  max_samples: null  # null = use all samples (164), or set a number for testing
+
+# Experiment Configurations
+# Each experiment defines a unique combination of prompt strategy and settings
+experiments:
+  - name: "infilling_smart"
+    description: "Code infilling with TODO markers (best performance)"
+    enabled: true
+    prompt_strategy: "infilling"
+    postprocess_strategy: "smart"
+    temperature: 0.2
+    output_file: "completions_infilling_smart.jsonl"
+    results_file: "evaluation_infilling_smart.json"
+
+  - name: "minimal_smart"
+    description: "Minimal prompt with smart post-processing"
+    enabled: true
+    prompt_strategy: "minimal"
+    postprocess_strategy: "smart"
+    temperature: 0.2
+    output_file: "completions_minimal_smart.jsonl"
+    results_file: "evaluation_minimal_smart.json"
+
+  - name: "instructional_smart"
+    description: "Instructional prompt emphasizing correctness"
+    enabled: true
+    prompt_strategy: "instructional"
+    postprocess_strategy: "smart"
+    temperature: 0.1
+    output_file: "completions_instructional_smart.jsonl"
+    results_file: "evaluation_instructional_smart.json"
+
+  - name: "fewshot_smart"
+    description: "Few-shot prompt with example"
+    enabled: false  # Set to true to run this experiment
+    prompt_strategy: "fewshot"
+    postprocess_strategy: "smart"
+    temperature: 0.2
+    output_file: "completions_fewshot_smart.jsonl"
+    results_file: "evaluation_fewshot_smart.json"
+
+  - name: "cot_smart"
+    description: "Chain of thought reasoning prompt"
+    enabled: false  # Set to true to run this experiment
+    prompt_strategy: "cot"
+    postprocess_strategy: "smart"
+    temperature: 0.3
+    output_file: "completions_cot_smart.jsonl"
+    results_file: "evaluation_cot_smart.json"
+
+  - name: "infilling_basic"
+    description: "Infilling with basic post-processing"
+    enabled: false
+    prompt_strategy: "infilling"
+    postprocess_strategy: "basic"
+    temperature: 0.2
+    output_file: "completions_infilling_basic.jsonl"
+    results_file: "evaluation_infilling_basic.json"
+
+  # Comparison: With vs Without Post-processing
+  - name: "infilling_no_postprocess"
+    description: "Infilling WITHOUT post-processing (raw model output)"
+    enabled: false  # Enable to compare against infilling_smart
+    prompt_strategy: "infilling"
+    postprocess_strategy: "none"
+    temperature: 0.2
+    output_file: "completions_infilling_raw.jsonl"
+    results_file: "evaluation_infilling_raw.json"
+
+  - name: "minimal_no_postprocess"
+    description: "Minimal WITHOUT post-processing (raw model output)"
+    enabled: false  # Enable to compare against minimal_smart
+    prompt_strategy: "minimal"
+    postprocess_strategy: "none"
+    temperature: 0.2
+    output_file: "completions_minimal_raw.jsonl"
+    results_file: "evaluation_minimal_raw.json"

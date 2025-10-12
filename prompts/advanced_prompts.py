@@ -198,6 +198,7 @@ PROMPT_STRATEGIES = {
 
 # Mapping of post-processing strategies
 POSTPROCESS_STRATEGIES = {
+    'none': lambda c, p, e=None: c,  # No post-processing - raw output
     'basic': lambda c, p, e=None: enhanced_post_process(c, p),
     'smart': smart_post_process,
 }
