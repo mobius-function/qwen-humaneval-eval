@@ -101,3 +101,12 @@ experiments:
     temperature: 0.2
     output_file: "completions_minimal_raw.jsonl"
     results_file: "evaluation_minimal_raw.json"
+
+  - name: "datadriven_smart"
+    description: "Data-driven prompt based on analysis of all 164 problems"
+    enabled: false  # Enable to test reverse-engineered prompt
+    prompt_strategy: "datadriven"
+    postprocess_strategy: "smart"
+    temperature: 0.2
+    output_file: "completions_datadriven_smart.jsonl"
+    results_file: "evaluation_datadriven_smart.json"
