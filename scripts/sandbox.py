@@ -113,9 +113,9 @@ def run_single_test(code: str, test_input: str, expected_output: str, timeout: i
         True if test passes, False otherwise
     """
     test_code = f"""
-result = {test_input}
-assert result == {expected_output}, f"Expected {expected_output}, got {{result}}"
-"""
+    result = {test_input}
+    assert result == {expected_output}, f"Expected {expected_output}, got {{result}}"
+    """
 
     result = check_correctness(code, test_code, timeout)
     return result["passed"]
