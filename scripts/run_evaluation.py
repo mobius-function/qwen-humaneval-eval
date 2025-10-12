@@ -200,7 +200,7 @@ def evaluate_completions(
                 task_id = result['task_id']
                 f.write(f"[{idx}/{len(failed_results)}] Task: {task_id}\n")
                 f.write("="*80 + "\n")
-                f.write(f"Error: {result['error']}\n")
+                f.write(f"Error: {result.get('error', 'No error message')}\n")
                 f.write("\n")
 
                 # Get the original problem and test info
@@ -215,6 +215,9 @@ def evaluate_completions(
                     f.write("TEST CODE:\n")
                     f.write("-"*80 + "\n")
                     f.write(test_info['test'] + "\n")
+                    f.write("\n")
+                else:
+                    f.write(f"WARNING: Could not find test info for {task_id}\n")
                     f.write("\n")
 
                 f.write("-"*80 + "\n")
