@@ -136,6 +136,20 @@ def run_inference(
         # Post-process using selected strategy
         cleaned_completion = postprocess_fn(completion, full_prompt, entry_point)
 
+        # Debug: Show before/after post-processing for first 10 examples
+        if len(results) < 10:
+            print(f"\n{'='*80}")
+            print(f"Task: {task_id}")
+            print(f"{'='*80}")
+            print(f"BEFORE POST-PROCESSING:")
+            print(f"{'-'*80}")
+            print(completion)
+            print(f"\n{'-'*80}")
+            print(f"AFTER POST-PROCESSING:")
+            print(f"{'-'*80}")
+            print(cleaned_completion)
+            print(f"{'='*80}\n")
+
         # Combine prompt + completion for evaluation
         full_code = prompt_text + cleaned_completion
 
