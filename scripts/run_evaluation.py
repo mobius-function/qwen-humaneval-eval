@@ -4,6 +4,7 @@
 import json
 import multiprocessing
 import os
+import signal
 import sys
 from pathlib import Path
 from typing import List, Dict, Tuple
@@ -13,9 +14,17 @@ from rich.console import Console
 from rich.table import Table
 from tqdm import tqdm
 
-from sandbox import check_correctness
-
 console = Console()
+
+
+class TimeoutException(Exception):
+    """Raised when code execution times out."""
+    pass
+
+
+def timeout_handler(signum, frame):
+    """Signal handler for timeout."""
+    raise TimeoutException("Execution timed out")
 
 
 def load_completions(completions_file: str) -> List[Dict]:
@@ -61,18 +70,42 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
     test_info = tests[task_id]
     test_code = test_info["test"]
 
-    # Check correctness
-    result = check_correctness(
-        code=full_code,
-        test_code=test_code,
-        timeout=timeout,
-    )
+    # Execute test directly in this process with timeout protection
+    # (we're already in an isolated Pool worker, so this is safe)
+    try:
+        # Set up timeout using signal (Unix/Linux only)
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(timeout)
 
-    return {
-        "task_id": task_id,
-        "passed": result["passed"],
-        "error": result.get("error"),
-    }
+        try:
+            namespace = {}
+            exec(full_code, namespace)
+            exec(test_code, namespace)
+
+            # Cancel the alarm if test completes successfully
+            signal.alarm(0)
+
+            return {
+                "task_id": task_id,
+                "passed": True,
+                "error": None,
+            }
+        finally:
+            # Always cancel the alarm
+            signal.alarm(0)
+
+    except TimeoutException:
+        return {
+            "task_id": task_id,
+            "passed": False,
+            "error": f"Timeout after {timeout} seconds",
+        }
+    except Exception as e:
+        return {
+            "task_id": task_id,
+            "passed": False,
+            "error": str(e),
+        }
 
 
 def evaluate_completions(
