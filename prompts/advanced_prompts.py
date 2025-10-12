@@ -220,6 +220,62 @@ def create_datadriven_prompt(problem: str) -> str:
     return prompt
 
 
+def create_expert_prompt(problem: str) -> str:
+    """
+    Expert-engineered prompt based on advanced LLM prompting best practices.
+
+    Incorporates:
+    - Detailed context and constraints
+    - Expert persona (senior Python engineer)
+    - Self-review mechanism
+    - Explicit edge case handling
+    - Chain of thought reasoning
+    - Production-ready code standards
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Optimized expert-level prompt
+    """
+    prompt = f"""You are a senior Python engineer writing production code for a code evaluation benchmark.
+
+TASK:
+{problem}
+
+REQUIREMENTS ANALYSIS:
+1. Read the docstring carefully - it contains the complete specification
+2. Identify the exact return type and format expected
+3. Extract ALL edge cases mentioned or implied
+4. Note any constraints or special conditions
+5. Study examples in docstring - they define correct behavior
+
+IMPLEMENTATION APPROACH:
+- Think through the logic step-by-step before coding
+- Handle ALL edge cases explicitly (empty inputs, None, negative numbers, special values)
+- Match the examples exactly - they are test cases
+- Write clean, efficient, production-ready code
+- No placeholders, no TODOs, no incomplete sections
+
+SELF-REVIEW CHECKLIST (verify before submitting):
+✓ Does the code match the docstring specification exactly?
+✓ Are all examples/test cases in docstring satisfied?
+✓ Are edge cases handled (empty lists, None, zeros, negatives)?
+✓ Is the return type correct?
+✓ Is the logic efficient and bug-free?
+✓ Are variable names clear and meaningful?
+
+CONSTRAINTS:
+- Python 3.x standard library only
+- No external dependencies
+- Must be immediately executable
+- Performance: O(n) or better preferred for list operations
+
+Now implement the complete function body (no explanations, just code):
+"""
+    return prompt
+
+
 # Mapping of strategy names to prompt functions
 PROMPT_STRATEGIES = {
     'minimal': create_minimal_prompt,
@@ -228,6 +284,7 @@ PROMPT_STRATEGIES = {
     'fewshot': create_fewshot_prompt,
     'cot': create_chain_of_thought_prompt,
     'datadriven': create_datadriven_prompt,
+    'expert': create_expert_prompt,
 }
 
 # Mapping of post-processing strategies

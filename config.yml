@@ -110,3 +110,12 @@ experiments:
     temperature: 0.2
     output_file: "completions_datadriven_smart.jsonl"
     results_file: "evaluation_datadriven_smart.json"
+
+  - name: "expert_smart"
+    description: "Expert-engineered prompt with self-review, persona, edge cases"
+    enabled: false  # Enable to test advanced prompting techniques
+    prompt_strategy: "expert"
+    postprocess_strategy: "smart"
+    temperature: 0.2
+    output_file: "completions_expert_smart.jsonl"
+    results_file: "evaluation_expert_smart.json"
