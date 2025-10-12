@@ -111,7 +111,9 @@ def evaluate_completions(
     eval_args = [(completion, tests, timeout) for completion in completions]
 
     # Run evaluations in parallel
-    with multiprocessing.Pool(processes=num_workers) as pool:
+    # Note: Using a custom context to allow nested multiprocessing (sandbox.py spawns subprocesses)
+    ctx = multiprocessing.get_context('spawn')
+    with ctx.Pool(processes=num_workers) as pool:
         results = list(tqdm(
             pool.imap(evaluate_single_completion, eval_args),
             total=total_count,
