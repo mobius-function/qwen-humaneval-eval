@@ -14,8 +14,9 @@ def create_infilling_prompt(problem: str) -> str:
     Returns:
         Formatted prompt
     """
-    prompt = f"""{problem}    # TODO: Implement the function body here
-"""
+    prompt = f"""{problem}
+    # TODO: Implement the function body here
+    """
     return prompt
 
 
@@ -30,12 +31,12 @@ def create_fewshot_prompt(problem: str) -> str:
         Formatted prompt with example
     """
     example = '''Example:
-def add(a: int, b: int) -> int:
-    """Add two numbers."""
-    return a + b
+    def add(a: int, b: int) -> int:
+        """Add two numbers."""
+        return a + b
 
-Now complete this function:
-'''
+    Now complete this function:
+    '''
     prompt = f"{example}\n{problem}"
     return prompt
 
@@ -52,13 +53,14 @@ def create_instructional_prompt(problem: str) -> str:
     """
     prompt = f"""You are an expert Python programmer. Write a correct and efficient implementation.
 
-{problem}
+    {problem}
 
-Requirements:
-- Implement the function body correctly
-- Handle all edge cases
-- Follow the docstring specification exactly
-- Write clean, readable code"""
+    Requirements:
+    - Implement the function body correctly
+    - Handle all edge cases
+    - Follow the docstring specification exactly
+    - Write clean, readable code
+    """
     return prompt
 
 
@@ -88,14 +90,15 @@ def create_chain_of_thought_prompt(problem: str) -> str:
     """
     prompt = f"""Solve this step by step:
 
-{problem}
+    {problem}
 
-# Solution approach:
-# 1. Understand the requirements from the docstring
-# 2. Identify edge cases
-# 3. Implement the logic
+    # Solution approach:
+    # 1. Understand the requirements from the docstring
+    # 2. Identify edge cases
+    # 3. Implement the logic
 
-# Implementation:"""
+    # Implementation:
+    """
     return prompt
 
 
