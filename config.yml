@@ -94,7 +94,7 @@ experiments:
 
   - name: "helper_none"
     description: "Helper prompt with code patterns"
-    enabled: true
+    enabled: false
     prompt_strategy: "helper"
     postprocess_strategy: "none"
     temperature: 0.2
@@ -130,9 +130,18 @@ experiments:
 
   - name: "opt1_none"
     description: "Category-based prompt with targeted guidance per problem type"
-    enabled: true
+    enabled: false
     prompt_strategy: "opt1"
     postprocess_strategy: "none"
     temperature: 0.2
     output_file: "completions_opt1_none.jsonl"
     results_file: "evaluation_opt1_none.json"
+
+  - name: "try1_none"
+    description: "Minimal prompt v2 with anti-stub instruction (try1)"
+    enabled: true
+    prompt_strategy: "try1"
+    postprocess_strategy: "none"
+    temperature: 0.2
+    output_file: "completions_try1_none.jsonl"
+    results_file: "evaluation_try1_none.json"

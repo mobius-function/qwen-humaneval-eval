@@ -34,6 +34,21 @@ Provide only the complete function implementation without any explanation."""
     return prompt
 
 
+def create_minimal_prompt_v2(problem: str) -> str:
+    """
+    Minimal prompt with single critical instruction to prevent stub code.
+    Also known as 'try1' in experiments.
+
+    Args:
+        problem: The function signature and docstring from HumanEval
+
+    Returns:
+        Formatted prompt string
+    """
+    return f"""{problem}
+# Implement completely. No pass statements. No undefined functions."""
+
+
 def post_process_completion(completion: str, prompt: str) -> str:
     """
     Post-process the model completion to extract clean code.

@@ -1,6 +1,7 @@
 """Advanced prompt templates for better code generation."""
 
 import re
+from prompts.code_completion import create_minimal_prompt_v2
 
 
 def create_infilling_prompt(problem: str) -> str:
@@ -712,6 +713,7 @@ PROMPT_STRATEGIES = {
     'helper': create_helper_prompt,
     'opt1': advanced_categorize_prompt,
     'categorize': categorize_and_prompt,  # Keep the old one available
+    'try1': create_minimal_prompt_v2,  # Minimal prompt with anti-stub instruction
 }
 
 def solution_post_process(completion: str, prompt: str, entry_point: str = None) -> str:
