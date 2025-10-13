@@ -182,48 +182,56 @@ Sample of actual failures (first 10):
 {failure_examples}
 """
 
-    # Ask Qwen to generate refined instructions
-    meta_prompt = f"""You are a prompt optimization expert. Your task is to improve a prompt for code generation.
+    # Ask Qwen to generate refined instructions with a clearer, simpler prompt
+    meta_prompt = f"""Analyze these code generation failures and suggest prompt improvements.
 
 {history_summary}
 
 {failure_summary}
 
-Current instructions being used:
-{current_instructions if current_instructions else "[Minimal - no instructions]"}
+Task: Generate NEW prompt instructions to reduce these failures. Look at what errors are happening and suggest specific guidance.
 
-Based on the iteration history (what worked vs what didn't) and current failure patterns, generate IMPROVED instructions for the code generation prompt.
+Example good instructions:
+- Study the examples in docstrings carefully - they are test cases
+- Handle empty lists and edge cases explicitly
+- Return the exact type specified (list not tuple, int not float)
+- Verify your logic against each docstring example
 
-Requirements:
-1. Learn from history: If previous refinements didn't improve accuracy, try a different approach
-2. Target the specific error types that are failing
-3. Be concise but specific
-4. Output ONLY the new instructions (bullet points starting with "-")
-5. Do NOT repeat instructions that already exist
-6. If assertion errors are high, emphasize examples/test cases
-7. If the current approach isn't working, try a fundamentally different strategy
+Now write 3-5 NEW instructions based on the failures above. Start each with "-":
 
-Output the refined instructions below (just the bullet points, nothing else):
-"""
+-"""
 
     # Call Qwen to generate refinement
     try:
         response = client.generate_completion(
             prompt=meta_prompt,
-            max_tokens=512,
-            temperature=0.7,  # Higher temp for creativity
-            stop=["\n\n\n", "---"]
+            max_tokens=300,
+            temperature=0.8,  # Higher temp for creativity
+            stop=["\n\n", "Task:", "Example:"]
         )
 
-        # Extract and clean the response
-        new_instructions = response.strip()
+        # Qwen will continue from the "-" we started
+        new_instructions = "-" + response.strip()
+
+        # Clean up any repeated prompts or garbage
+        lines = new_instructions.split('\n')
+        clean_lines = []
+        for line in lines:
+            line = line.strip()
+            if line.startswith('-') and len(line) > 5:  # Valid instruction
+                clean_lines.append(line)
+            elif not line.startswith('-') and clean_lines:  # Continuation of previous
+                clean_lines[-1] += " " + line
+
+        new_instructions = '\n'.join(clean_lines)
 
         # If Qwen didn't generate anything useful, fall back to rule-based
-        if not new_instructions or len(new_instructions) < 20:
-            logger.warning("Qwen didn't generate useful instructions, falling back to rule-based")
+        if not new_instructions or len(new_instructions) < 20 or len(clean_lines) == 0:
+            logger.warning(f"Qwen output not useful: '{new_instructions[:100]}', falling back")
             return fallback_refinement(current_instructions, analysis)
 
-        logger.info(f"Qwen generated {len(new_instructions.split(chr(10)))} lines of new instructions")
+        logger.info(f"Qwen generated {len(clean_lines)} instruction lines")
+        logger.info(f"Generated instructions:\n{new_instructions}")
         return new_instructions
 
     except Exception as e:
