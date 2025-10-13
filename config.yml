@@ -127,3 +127,12 @@ experiments:
     temperature: 0.2
     output_file: "completions_optimized_v3_none.jsonl"
     results_file: "evaluation_optimized_v3_none.json"
+
+  - name: "opt1_none"
+    description: "Category-based prompt with targeted guidance per problem type"
+    enabled: true
+    prompt_strategy: "opt1"
+    postprocess_strategy: "none"
+    temperature: 0.2
+    output_file: "completions_opt1_none.jsonl"
+    results_file: "evaluation_opt1_none.json"

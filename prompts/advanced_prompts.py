@@ -534,6 +534,169 @@ Solution:
     return prompt
 
 
+def advanced_categorize_prompt(problem: str) -> str:
+    """
+    Advanced categorization with difficulty assessment and specific hints.
+    """
+    problem_lower = problem.lower()
+    lines = problem.split('\n')
+    has_examples = '>>>' in problem
+
+    # Assess complexity
+    is_complex = (
+        len(lines) > 15 or  # Long description
+        'recursive' in problem_lower or
+        'dynamic' in problem_lower or
+        problem.count('if') > 3  # Multiple conditions
+    )
+
+    # Check for common failure patterns
+    needs_helper = any(word in problem_lower for word in ['prime', 'palindrome', 'balanced'])
+    needs_edge_cases = any(word in problem_lower for word in ['empty', 'none', 'zero', 'negative'])
+
+    prompt_parts = [problem, "\n"]
+
+    if is_complex:
+        prompt_parts.append("# COMPLEX PROBLEM - Take it step by step:\n")
+        prompt_parts.append("# 1. Understand the algorithm completely\n")
+        prompt_parts.append("# 2. Handle base cases\n")
+        prompt_parts.append("# 3. Implement main logic\n")
+        prompt_parts.append("# 4. Test edge cases\n")
+
+    if needs_helper:
+        prompt_parts.append("# Define any helper functions you need INSIDE this function\n")
+        prompt_parts.append("# Do not reference undefined functions\n")
+
+    if needs_edge_cases:
+        prompt_parts.append("# Critical edge cases to handle:\n")
+        prompt_parts.append("# - Empty inputs\n")
+        prompt_parts.append("# - Single element\n")
+        prompt_parts.append("# - Negative numbers\n")
+        prompt_parts.append("# - Zero values\n")
+
+    if has_examples:
+        prompt_parts.append("# Your solution MUST work for all provided examples\n")
+
+    prompt_parts.append("\n# Complete implementation:\n")
+
+    return ''.join(prompt_parts)
+
+
+def categorize_and_prompt(problem: str) -> str:
+    """
+    Analyzes the problem and selects an appropriate prompt strategy based on category.
+
+    Categories cover:
+    - Filtering/selection problems
+    - Mathematical problems
+    - String manipulation
+    - Array/statistics
+    - Validation/checking
+    - Parsing/bracket matching
+    - Complex algorithms
+    - Simple computation
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Categorized prompt with targeted guidance
+    """
+    problem_lower = problem.lower()
+
+    # Category 1: Simple iteration/filtering problems
+    if any(keyword in problem_lower for keyword in ['filter', 'remove', 'select', 'find all', 'count']):
+        return f"""{problem}
+# This is a filtering/selection problem.
+# Use list comprehension or a simple loop.
+# Remember to check the condition carefully.
+# Return the correct collection type (list, count, etc.)
+"""
+
+    # Category 2: Mathematical/Prime number problems
+    elif any(keyword in problem_lower for keyword in ['prime', 'factorial', 'fibonacci', 'divisor', 'factor']):
+        return f"""{problem}
+# This is a mathematical problem.
+# Implement the mathematical definition directly.
+# For prime checking: check divisibility from 2 to sqrt(n)
+# For factorial: use iteration or recursion
+# Handle edge cases like n=0, n=1
+"""
+
+    # Category 3: String manipulation
+    elif any(keyword in problem_lower for keyword in ['palindrome', 'reverse', 'case', 'vowel', 'consonant']):
+        return f"""{problem}
+# This is a string manipulation problem.
+# Common operations: string[::-1] for reverse, .lower()/.upper() for case
+# Remember strings are immutable - build new ones
+# Check character by character if needed
+"""
+
+    # Category 4: Array/List transformation
+    elif any(keyword in problem_lower for keyword in ['sort', 'median', 'average', 'sum', 'product']):
+        return f"""{problem}
+# This is an array/statistics problem.
+# For sorting: use sorted() or .sort()
+# For median: sort first, then find middle
+# For averages: sum(list)/len(list)
+# Handle empty lists appropriately
+"""
+
+    # Category 5: Validation/checking problems
+    elif any(keyword in problem_lower for keyword in ['valid', 'check', 'verify', 'correct', 'balanced']):
+        return f"""{problem}
+# This is a validation problem.
+# Return True/False based on conditions
+# Check ALL requirements mentioned
+# Use early return for invalid cases
+# Common pattern: iterate and check each condition
+"""
+
+    # Category 6: Parsing/bracket problems
+    elif any(keyword in problem_lower for keyword in ['bracket', 'parenthes', 'parse', 'match']):
+        return f"""{problem}
+# This is a parsing/matching problem.
+# Use a stack for bracket matching: append for open, pop for close
+# Track depth/nesting level with a counter
+# Return False immediately on mismatch
+# Check stack is empty at end
+"""
+
+    # Category 7: Complex algorithm problems
+    elif any(keyword in problem_lower for keyword in ['dynamic', 'recursive', 'minimum path', 'subsequence']):
+        return f"""{problem}
+# This is a complex algorithm problem.
+# Break down into smaller subproblems
+# Consider base cases first
+# Build solution incrementally
+# Use memoization if recursive
+# FULLY IMPLEMENT - no placeholder code
+"""
+
+    # Category 8: Simple computation
+    elif len(problem.split('\n')) <= 5 and 'return' in problem_lower:
+        return f"""{problem}
+# Simple computation - implement the exact formula or logic described
+# Pay attention to the return type
+"""
+
+    # Default category: General comprehensive guidance
+    else:
+        return f"""{problem}
+# Read the problem carefully and identify:
+# 1. Input types and constraints
+# 2. Expected output type
+# 3. Algorithm needed
+# 4. Edge cases to handle
+
+# Implement a complete solution:
+# - No 'pass' or stub code
+# - Handle all cases mentioned
+# - Test against examples
+# - Return correct type
+"""
+
+
 # Mapping of strategy names to prompt functions
 PROMPT_STRATEGIES = {
     'minimal': create_minimal_prompt,
@@ -547,6 +710,8 @@ PROMPT_STRATEGIES = {
     'optimized_v2': create_optimized_v2_prompt,
     'optimized_v3': create_optimized_v3_prompt,
     'helper': create_helper_prompt,
+    'opt1': advanced_categorize_prompt,
+    'categorize': categorize_and_prompt,  # Keep the old one available
 }
 
 def solution_post_process(completion: str, prompt: str, entry_point: str = None) -> str:
