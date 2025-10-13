@@ -24,7 +24,7 @@ evaluation:
 
 # Dataset Settings
 dataset:
-  max_samples: 20  # Testing with 20 samples first, then set to null for full run
+  max_samples: null  # null = run on all 164 problems
 
 # Experiment Configurations
 # Each experiment defines a unique combination of prompt strategy and settings
