@@ -276,6 +276,87 @@ Now implement the complete function body (no explanations, just code):
     return prompt
 
 
+def create_optimized_v1_prompt(problem: str) -> str:
+    """
+    Optimized prompt v1 - Concise but effective.
+
+    Based on failure analysis:
+    - Emphasizes docstring examples as test cases
+    - Explicitly calls out edge cases
+    - Uses clear, directive language
+    - Minimal but sufficient context
+    - Focuses on implementation completeness
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Optimized prompt string
+    """
+    prompt = f"""Complete this Python function. The docstring contains examples that are actual test cases - your code must pass them all.
+
+{problem}
+
+IMPORTANT:
+- Study the examples in the docstring - they show exactly what's expected
+- Handle ALL edge cases: empty inputs, None, zeros, negative numbers, special values
+- Return the exact type and format shown in examples
+- Write complete, working code - no placeholders or TODOs
+- Keep the implementation simple and correct
+
+Implementation:"""
+    return prompt
+
+
+def create_optimized_v2_prompt(problem: str) -> str:
+    """
+    Optimized prompt v2 - Example-driven approach.
+
+    This version emphasizes the examples more strongly and uses
+    a problem-solving framework that mirrors how humans code.
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Optimized prompt string
+    """
+    prompt = f"""{problem}
+
+# Instructions:
+# 1. READ the examples in the docstring carefully - they are test cases
+# 2. IDENTIFY edge cases: What happens with empty inputs? Special values?
+# 3. IMPLEMENT the logic to pass all examples
+# 4. VERIFY your logic handles all cases mentioned in the docstring
+#
+# Write only the function body. No explanations needed.
+"""
+    return prompt
+
+
+def create_optimized_v3_prompt(problem: str) -> str:
+    """
+    Optimized prompt v3 - Ultra-minimal with strategic emphasis.
+
+    Sometimes less is more. This version is extremely concise but
+    strategically emphasizes the most important aspects: examples
+    as tests and edge case handling.
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Optimized prompt string
+    """
+    prompt = f"""{problem}
+
+# The examples above are test cases - make sure your implementation passes them all.
+# Handle edge cases: empty inputs, None, special values.
+# Write complete, correct code:
+"""
+    return prompt
+
+
 # Mapping of strategy names to prompt functions
 PROMPT_STRATEGIES = {
     'minimal': create_minimal_prompt,
@@ -285,6 +366,9 @@ PROMPT_STRATEGIES = {
     'cot': create_chain_of_thought_prompt,
     'datadriven': create_datadriven_prompt,
     'expert': create_expert_prompt,
+    'optimized_v1': create_optimized_v1_prompt,
+    'optimized_v2': create_optimized_v2_prompt,
+    'optimized_v3': create_optimized_v3_prompt,
 }
 
 # Mapping of post-processing strategies

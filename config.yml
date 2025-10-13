@@ -24,14 +24,14 @@ evaluation:
 
 # Dataset Settings
 dataset:
-  max_samples: null  # null = use all samples (164), or set a number for testing
+  max_samples: 20  # Testing with 20 samples first, then set to null for full run
 
 # Experiment Configurations
 # Each experiment defines a unique combination of prompt strategy and settings
 experiments:
   - name: "infilling_smart"
     description: "Code infilling with TODO markers (best performance)"
-    enabled: true
+    enabled: false  # Disabled to test new optimized prompts
     prompt_strategy: "infilling"
     postprocess_strategy: "smart"
     temperature: 0.2
@@ -40,7 +40,7 @@ experiments:
 
   - name: "minimal_smart"
     description: "Minimal prompt with smart post-processing"
-    enabled: true
+    enabled: false  # Disabled to test new optimized prompts
     prompt_strategy: "minimal"
     postprocess_strategy: "smart"
     temperature: 0.2
@@ -49,7 +49,7 @@ experiments:
 
   - name: "instructional_smart"
     description: "Instructional prompt emphasizing correctness"
-    enabled: true
+    enabled: false  # Disabled to test new optimized prompts
     prompt_strategy: "instructional"
     postprocess_strategy: "smart"
     temperature: 0.1
@@ -119,3 +119,31 @@ experiments:
     temperature: 0.2
     output_file: "completions_expert_smart.jsonl"
     results_file: "evaluation_expert_smart.json"
+
+  # NEW: Optimized prompts based on failure analysis
+  - name: "optimized_v1"
+    description: "Optimized v1: Concise, example-driven, edge-case focused"
+    enabled: true  # RECOMMENDED: Best balance of clarity and conciseness
+    prompt_strategy: "optimized_v1"
+    postprocess_strategy: "smart"
+    temperature: 0.2
+    output_file: "completions_optimized_v1.jsonl"
+    results_file: "evaluation_optimized_v1.json"
+
+  - name: "optimized_v2"
+    description: "Optimized v2: Structured with numbered instructions"
+    enabled: true  # Test structured approach
+    prompt_strategy: "optimized_v2"
+    postprocess_strategy: "smart"
+    temperature: 0.2
+    output_file: "completions_optimized_v2.jsonl"
+    results_file: "evaluation_optimized_v2.json"
+
+  - name: "optimized_v3"
+    description: "Optimized v3: Ultra-minimal with strategic emphasis"
+    enabled: true  # Test if less is more
+    prompt_strategy: "optimized_v3"
+    postprocess_strategy: "smart"
+    temperature: 0.2
+    output_file: "completions_optimized_v3.jsonl"
+    results_file: "evaluation_optimized_v3.json"
