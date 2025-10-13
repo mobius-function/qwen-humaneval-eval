@@ -65,6 +65,8 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
             "task_id": task_id,
             "passed": False,
             "error": "No test found for task",
+            "completion": completion.get("completion"),
+            "raw_completion": completion.get("raw_completion"),
         }
 
     test_info = tests[task_id]
@@ -94,6 +96,8 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
                 "task_id": task_id,
                 "passed": True,
                 "error": None,
+                "completion": completion.get("completion"),
+                "raw_completion": completion.get("raw_completion"),
             }
         finally:
             # Always cancel the alarm
