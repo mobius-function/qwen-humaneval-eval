@@ -1,7 +1,7 @@
 """Advanced prompt templates for better code generation."""
 
 import re
-from prompts.code_completion import create_minimal_prompt_v2, create_minimal_v2, create_minimal_v3, create_minimal_v4, create_minimal_v5, create_minimal_v6, create_robust_prompt
+from prompts.code_completion import create_minimal_prompt_v2, create_minimal_v0, create_minimal_v2, create_minimal_v3, create_minimal_v4, create_minimal_v5, create_minimal_v6, create_robust_prompt, create_expert_v00, create_expert_v0, create_expert_v1, create_expert_v2, create_example_v0
 
 
 def create_infilling_prompt(problem: str) -> str:
@@ -802,12 +802,18 @@ def categorize_and_prompt(problem: str) -> str:
 # Mapping of strategy names to prompt functions
 PROMPT_STRATEGIES = {
     'minimal': create_minimal_prompt,
+    'minimal_v0': create_minimal_v0,  # Expert-framed prompt targeting algorithmic weaknesses
     'minimal_v2': create_minimal_v2,  # Minimal prompt with 'return' starter
     'minimal_v3': create_minimal_v3,  # Ultra-minimal prompt with just problem + newline
     'minimal_v4': create_minimal_v4,  # Minimal prompt with indentation hint
     'minimal_v5': create_minimal_v5,  # Bare minimal - just rstrip() with no additions
     'minimal_v6': create_minimal_v6,  # Minimal prompt with anti-stub instruction
     'minimal_v7': create_robust_prompt,  # Balanced prompt focusing on critical failure points
+    'expert_v00': create_expert_v00,  # Smart prompt: direct "expert in Python string manipulation"
+    'expert_v0': create_expert_v0,  # Smart prompt: expert framing only for string problems
+    'expert_v1': create_expert_v1,  # Smart prompt: string expert OR list expert OR minimal
+    'expert_v2': create_expert_v2,  # Smart prompt: string OR list OR sorting expert OR minimal
+    'example_v0': create_example_v0,  # Smart prompt: minimal + relevant example (string/list/sorting)
     'infilling': create_infilling_prompt,
     'instructional': create_instructional_prompt,
     'fewshot': create_fewshot_prompt,

@@ -137,6 +137,60 @@ experiments:
     output_file: "completions_opt1_none.jsonl"
     results_file: "evaluation_opt1_none.json"
 
+  - name: "minimal_v0_none"
+    description: "Expert-framed prompt focused on string manipulation only"
+    enabled: false
+    prompt_strategy: "minimal_v0"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_minimal_v0_none.jsonl"
+    results_file: "evaluation_minimal_v0_none.json"
+
+  - name: "expert_v00_none"
+    description: "Smart prompt: direct 'expert in Python string manipulation' for string problems"
+    enabled: true
+    prompt_strategy: "expert_v00"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_expert_v00_none.jsonl"
+    results_file: "evaluation_expert_v00_none.json"
+
+  - name: "expert_v0_none"
+    description: "Smart prompt: expert framing only for detected string problems, minimal otherwise"
+    enabled: true
+    prompt_strategy: "expert_v0"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_expert_v0_none.jsonl"
+    results_file: "evaluation_expert_v0_none.json"
+
+  - name: "expert_v1_none"
+    description: "Smart prompt: string expert OR list expert OR minimal (two experts)"
+    enabled: true
+    prompt_strategy: "expert_v1"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_expert_v1_none.jsonl"
+    results_file: "evaluation_expert_v1_none.json"
+
+  - name: "expert_v2_none"
+    description: "Smart prompt: string OR list OR sorting expert OR minimal (three experts)"
+    enabled: true
+    prompt_strategy: "expert_v2"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_expert_v2_none.jsonl"
+    results_file: "evaluation_expert_v2_none.json"
+
+  - name: "example_v0_none"
+    description: "Smart prompt: minimal + one relevant example (string/list/sorting)"
+    enabled: true
+    prompt_strategy: "example_v0"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_example_v0_none.jsonl"
+    results_file: "evaluation_example_v0_none.json"
+
   - name: "minimal_v2_none"
     description: "Minimal prompt with 'return' starter hint"
     enabled: false
@@ -202,7 +256,7 @@ experiments:
 
   - name: "minimal_post_v5"
     description: "Minimal prompt with post_v5 post-processing (production-ready pipeline)"
-    enabled: true
+    enabled: false
     prompt_strategy: "minimal"
     postprocess_strategy: "post_v5"
     temperature: 0.0
