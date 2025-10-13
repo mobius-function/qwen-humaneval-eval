@@ -120,7 +120,7 @@ experiments:
     output_file: "completions_expert_smart.jsonl"
     results_file: "evaluation_expert_smart.json"
 
-  # Compare: No post-processing vs Ultra post-processing
+  # Compare: No post-processing vs Solution post-processing
   - name: "minimal_none"
     description: "Minimal prompt with NO post-processing (raw output)"
     enabled: true
@@ -130,11 +130,11 @@ experiments:
     output_file: "completions_minimal_none.jsonl"
     results_file: "evaluation_minimal_none.json"
 
-  - name: "minimal_ultra"
-    description: "Minimal prompt with ULTRA post-processing (error recovery)"
+  - name: "minimal_solution"
+    description: "Minimal prompt with solution-specific post-processing"
     enabled: true
     prompt_strategy: "minimal"
-    postprocess_strategy: "ultra"
+    postprocess_strategy: "solution"
     temperature: 0.2
-    output_file: "completions_minimal_ultra.jsonl"
-    results_file: "evaluation_minimal_ultra.json"
+    output_file: "completions_minimal_solution.jsonl"
+    results_file: "evaluation_minimal_solution.json"
