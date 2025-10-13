@@ -187,6 +187,151 @@ def smart_post_process(completion: str, prompt: str, entry_point: str = None) ->
     return cleaned.rstrip()
 
 
+def ultra_smart_post_process(completion: str, prompt: str, entry_point: str = None) -> str:
+    """
+    Ultra-smart post-processing with advanced error recovery.
+
+    Handles:
+    - Truncated/incomplete code (missing brackets, quotes)
+    - Placeholder code detection (pass, TODO, etc)
+    - Indentation normalization
+    - Echoed prompts/docstrings
+    - Incomplete syntax structures
+
+    Args:
+        completion: Raw completion
+        prompt: Original prompt
+        entry_point: Function name to validate
+
+    Returns:
+        Cleaned and validated code
+    """
+    import ast
+
+    # Start with enhanced post-processing
+    cleaned = enhanced_post_process(completion, prompt)
+
+    # 1. Detect and remove placeholder patterns
+    placeholder_patterns = [
+        r'^\s*#\s*Your code here\s*$',
+        r'^\s*#\s*TODO:.*$',
+        r'^\s*#\s*Write your code here\s*$',
+        r'^\s*#\s*Implement.*$',
+        r'^\s*pass\s*$',
+    ]
+
+    lines = cleaned.split('\n')
+    filtered_lines = []
+    has_real_code = False
+
+    for line in lines:
+        is_placeholder = False
+        for pattern in placeholder_patterns:
+            if re.match(pattern, line):
+                is_placeholder = True
+                break
+
+        if not is_placeholder:
+            filtered_lines.append(line)
+            if line.strip() and not line.strip().startswith('#'):
+                has_real_code = True
+        elif not has_real_code:
+            # Keep placeholders only if we haven't seen real code yet
+            filtered_lines.append(line)
+
+    cleaned = '\n'.join(filtered_lines)
+
+    # 2. Try to fix truncated code (incomplete brackets/quotes)
+    # Count opening vs closing delimiters
+    open_parens = cleaned.count('(') - cleaned.count(')')
+    open_brackets = cleaned.count('[') - cleaned.count(']')
+    open_braces = cleaned.count('{') - cleaned.count('}')
+
+    # Add missing closing delimiters
+    if open_parens > 0:
+        cleaned += ')' * open_parens
+    if open_brackets > 0:
+        cleaned += ']' * open_brackets
+    if open_braces > 0:
+        cleaned += '}' * open_braces
+
+    # 3. Check for incomplete string literals
+    single_quotes = cleaned.count("'")
+    double_quotes = cleaned.count('"')
+
+    # Simple heuristic: if odd number of quotes, likely truncated
+    if single_quotes % 2 == 1:
+        cleaned += "'"
+    if double_quotes % 2 == 1:
+        cleaned += '"'
+
+    # 4. Normalize indentation
+    lines = cleaned.split('\n')
+    if lines:
+        # Find minimum indentation (excluding empty lines)
+        min_indent = float('inf')
+        for line in lines:
+            if line.strip():
+                indent = len(line) - len(line.lstrip())
+                min_indent = min(min_indent, indent)
+
+        # Remove excess base indentation
+        if min_indent > 0 and min_indent != float('inf'):
+            normalized = []
+            for line in lines:
+                if line.strip():
+                    normalized.append(line[min_indent:])
+                else:
+                    normalized.append(line)
+            cleaned = '\n'.join(normalized)
+
+    # 5. Remove incomplete final lines (but try to salvage what we can)
+    lines = cleaned.split('\n')
+    while lines:
+        last_line = lines[-1].rstrip()
+
+        # Keep the line if it's a complete statement
+        if not last_line:
+            lines.pop()
+            continue
+
+        # Remove if it ends with incomplete syntax
+        if last_line.endswith((':', ',', '(', '[', '{', '\\', '.')):
+            lines.pop()
+        else:
+            break
+
+    cleaned = '\n'.join(lines).rstrip()
+
+    # 6. Validate Python syntax (if possible)
+    # Try to parse as Python code to ensure it's syntactically valid
+    try:
+        # Wrap in a minimal function to test
+        test_code = f"def test_func():\n" + '\n'.join(f"    {line}" for line in cleaned.split('\n'))
+        ast.parse(test_code)
+        # If it parses, we're good
+    except SyntaxError as e:
+        # If syntax error, try to salvage by removing problematic lines from end
+        lines = cleaned.split('\n')
+        while len(lines) > 1:  # Keep at least one line
+            lines.pop()
+            test_cleaned = '\n'.join(lines)
+            try:
+                test_code = f"def test_func():\n" + '\n'.join(f"    {line}" for line in test_cleaned.split('\n'))
+                ast.parse(test_code)
+                cleaned = test_cleaned
+                break
+            except SyntaxError:
+                continue
+
+    # 7. Final cleanup: ensure we have actual code
+    if not cleaned.strip() or cleaned.strip() in ['pass', '# TODO', '# Your code here']:
+        # Return minimal valid code rather than nothing
+        cleaned = "pass"
+
+    return cleaned.rstrip()
+
+
 def create_datadriven_prompt(problem: str) -> str:
     """
     Data-driven prompt based on analysis of all 164 HumanEval problems.
@@ -376,4 +521,5 @@ POSTPROCESS_STRATEGIES = {
     'none': lambda c, p, e=None: c,  # No post-processing - raw output
     'basic': lambda c, p, e=None: enhanced_post_process(c, p),
     'smart': smart_post_process,
+    'ultra': ultra_smart_post_process,  # Advanced error recovery
 }

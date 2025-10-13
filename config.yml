@@ -4,12 +4,12 @@
 # vLLM Server Settings
 vllm:
   api_url: "http://localhost:8000/v1"
-  max_tokens: 512
+  max_tokens: 768  # Increased from 512 to allow more complex implementations
   top_p: 0.95
   stop_sequences:
     - "\nclass "
     - "\ndef "
-    - "\n#"
+    # REMOVED "\n#" - was too aggressive, stopped generation at inline comments
     - "\nif __name__"
 
 # Inference Settings
@@ -120,30 +120,21 @@ experiments:
     output_file: "completions_expert_smart.jsonl"
     results_file: "evaluation_expert_smart.json"
 
-  # NEW: Optimized prompts based on failure analysis
-  - name: "optimized_v1"
-    description: "Optimized v1: Concise, example-driven, edge-case focused"
-    enabled: true  # RECOMMENDED: Best balance of clarity and conciseness
-    prompt_strategy: "optimized_v1"
-    postprocess_strategy: "smart"
+  # Compare: No post-processing vs Ultra post-processing
+  - name: "minimal_none"
+    description: "Minimal prompt with NO post-processing (raw output)"
+    enabled: true
+    prompt_strategy: "minimal"
+    postprocess_strategy: "none"
     temperature: 0.2
-    output_file: "completions_optimized_v1.jsonl"
-    results_file: "evaluation_optimized_v1.json"
+    output_file: "completions_minimal_none.jsonl"
+    results_file: "evaluation_minimal_none.json"
 
-  - name: "optimized_v2"
-    description: "Optimized v2: Structured with numbered instructions"
-    enabled: true  # Test structured approach
-    prompt_strategy: "optimized_v2"
-    postprocess_strategy: "smart"
+  - name: "minimal_ultra"
+    description: "Minimal prompt with ULTRA post-processing (error recovery)"
+    enabled: true
+    prompt_strategy: "minimal"
+    postprocess_strategy: "ultra"
     temperature: 0.2
-    output_file: "completions_optimized_v2.jsonl"
-    results_file: "evaluation_optimized_v2.json"
-
-  - name: "optimized_v3"
-    description: "Optimized v3: Ultra-minimal with strategic emphasis"
-    enabled: true  # Test if less is more
-    prompt_strategy: "optimized_v3"
-    postprocess_strategy: "smart"
-    temperature: 0.2
-    output_file: "completions_optimized_v3.jsonl"
-    results_file: "evaluation_optimized_v3.json"
+    output_file: "completions_minimal_ultra.jsonl"
+    results_file: "evaluation_minimal_ultra.json"
