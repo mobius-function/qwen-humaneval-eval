@@ -172,26 +172,20 @@ def run_with_prompt(prompt_instructions: str, iteration: int) -> tuple:
         output_path=completions_file,
         temperature=0.2,
         prompt_strategy='dynamic',
-        postprocess_strategy='smart',
+        postprocess_strategy='none',
         num_workers=16,
     )
 
-    # Load completions
-    completions = []
-    with open(completions_file, 'r') as f:
-        for line in f:
-            completions.append(json.loads(line))
-
-    # Evaluate using existing function
+    # Evaluate using existing function (pass file path, not list)
     logger.info(f"Evaluating (iteration {iteration})...")
-    results = evaluate_completions(completions)
+    eval_summary = evaluate_completions(
+        completions_file=completions_file,
+        output_file=results_file
+    )
 
-    passed = sum(1 for r in results if r['passed'])
-    accuracy = passed / len(results)
-
-    # Save detailed results
-    with open(results_file, 'w') as f:
-        json.dump(results, f, indent=2)
+    # Extract results from summary
+    results = eval_summary['results']
+    accuracy = eval_summary['pass@1']
 
     # Save failure log
     failures = [r for r in results if not r['passed']]
