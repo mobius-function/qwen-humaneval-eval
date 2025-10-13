@@ -225,6 +225,12 @@ def evaluate_completions(
                     f.write(raw_completion + "\n")
                     f.write("\n")
 
+                    f.write("POST-PROCESSED CODE:\n")
+                    f.write("-"*80 + "\n")
+                    processed_completion = result.get('completion', 'N/A')
+                    f.write(processed_completion + "\n")
+                    f.write("\n")
+
                     if not passed:
                         f.write("ERROR:\n")
                         f.write("-"*80 + "\n")
@@ -261,6 +267,11 @@ def evaluate_completions(
                     f.write("GENERATED CODE (RAW MODEL OUTPUT):\n")
                     f.write("-"*80 + "\n")
                     f.write(result.get('raw_completion', 'N/A') + "\n")
+                    f.write("\n")
+
+                    f.write("POST-PROCESSED CODE:\n")
+                    f.write("-"*80 + "\n")
+                    f.write(result.get('completion', 'N/A') + "\n")
                     f.write("\n")
                 else:
                     f.write(f"WARNING: Could not find test info for {task_id}\n")

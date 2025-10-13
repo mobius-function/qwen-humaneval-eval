@@ -98,6 +98,9 @@ def run_single_experiment(exp_config: Dict, global_config: Dict, exp_logger: log
             prompt_strategy=exp_config['prompt_strategy'],
             postprocess_strategy=exp_config['postprocess_strategy'],
             num_workers=global_config['inference']['num_workers'],
+            max_tokens=global_config['vllm']['max_tokens'],
+            top_p=global_config['vllm']['top_p'],
+            stop=global_config['vllm']['stop_sequences'],
         )
         exp_logger.info(f"Inference completed successfully: {completions_file}")
     except Exception as e:

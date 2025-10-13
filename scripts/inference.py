@@ -28,8 +28,8 @@ class VLLMInference:
         self,
         prompt: str,
         max_tokens: int = 512,
-        temperature: float = 0.2,
-        top_p: float = 0.95,
+        temperature: float = 0.0,
+        top_p: float = 1.0,
         stop: List[str] = None,
     ) -> str:
         """
@@ -46,7 +46,7 @@ class VLLMInference:
             Generated completion text
         """
         if stop is None:
-            stop = ["\nclass ", "\ndef ", "\n#", "\nif __name__"]
+            stop = ["\n\n", "\ndef ", "\nclass ", "\nif "]
 
         payload = {
             "model": "Qwen/Qwen2.5-Coder-0.5B",
@@ -123,6 +123,9 @@ def process_single_problem(
     prompt_fn,
     postprocess_fn,
     temperature: float,
+    max_tokens: int,
+    top_p: float,
+    stop: List[str],
 ) -> Dict:
     """
     Process a single problem: generate and post-process completion.
@@ -133,6 +136,9 @@ def process_single_problem(
         prompt_fn: Prompt generation function
         postprocess_fn: Post-processing function
         temperature: Sampling temperature
+        max_tokens: Maximum tokens to generate
+        top_p: Nucleus sampling parameter
+        stop: Stop sequences
 
     Returns:
         Result dictionary with completion
@@ -148,6 +154,9 @@ def process_single_problem(
     completion = inference.generate_completion(
         prompt=full_prompt,
         temperature=temperature,
+        max_tokens=max_tokens,
+        top_p=top_p,
+        stop=stop,
     )
 
     # Post-process using selected strategy
@@ -168,11 +177,14 @@ def process_single_problem(
 def run_inference(
     output_path: str = "results/completions.jsonl",
     api_url: str = None,
-    temperature: float = 0.2,
+    temperature: float = 0.0,
     max_samples: int = None,
     prompt_strategy: str = "infilling",
     postprocess_strategy: str = "none",
     num_workers: int = None,
+    max_tokens: int = 512,
+    top_p: float = 1.0,
+    stop: List[str] = None,
 ):
     """
     Run inference on HumanEval dataset with parallel API calls.
@@ -183,8 +195,11 @@ def run_inference(
         temperature: Sampling temperature
         max_samples: Limit number of samples (for testing)
         prompt_strategy: Prompting strategy (minimal, infilling, instructional, fewshot, cot, etc.)
-        postprocess_strategy: Post-processing strategy (only 'none' supported - returns raw model output)
+        postprocess_strategy: Post-processing strategy (none=raw output, post_v1=fix crashes only)
         num_workers: Number of parallel workers (default: 16)
+        max_tokens: Maximum tokens to generate (default: 512)
+        top_p: Nucleus sampling parameter (default: 1.0)
+        stop: Stop sequences (default: ["\n\n", "\ndef ", "\nclass ", "\nif "])
     """
     # Setup logging
     main_logger, _ = setup_logging(output_path, prompt_strategy, postprocess_strategy)
@@ -201,10 +216,10 @@ def run_inference(
         raise ValueError(f"Unknown prompt strategy: '{prompt_strategy}'. Available: {list(PROMPT_STRATEGIES.keys())}")
     prompt_fn = PROMPT_STRATEGIES[prompt_strategy]
 
-    # Get postprocess function (only 'none' is supported)
-    if postprocess_strategy != 'none':
-        raise ValueError(f"Only 'none' post-processing is supported. Got: '{postprocess_strategy}'")
-    postprocess_fn = POSTPROCESS_STRATEGIES['none']
+    # Get postprocess function
+    if postprocess_strategy not in POSTPROCESS_STRATEGIES:
+        raise ValueError(f"Unknown postprocess strategy: '{postprocess_strategy}'. Available: {list(POSTPROCESS_STRATEGIES.keys())}")
+    postprocess_fn = POSTPROCESS_STRATEGIES[postprocess_strategy]
 
     # Load dataset
     problems = load_humaneval()
@@ -223,15 +238,21 @@ def run_inference(
     if num_workers is None:
         num_workers = 16  # Default for I/O-bound API calls
 
+    # Set default stop sequences if not provided
+    if stop is None:
+        stop = ["\n\n", "\ndef ", "\nclass ", "\nif "]
+
     # Generate completions in parallel
     print(f"\nGenerating completions for {len(problems)} problems...")
     print(f"Prompt strategy: {prompt_strategy}")
     print(f"Postprocess strategy: {postprocess_strategy}")
     print(f"Temperature: {temperature}")
+    print(f"Max tokens: {max_tokens}")
+    print(f"Top-p: {top_p}")
     print(f"Workers: {num_workers}")
 
     main_logger.info(f"Starting parallel inference on {len(problems)} problems with {num_workers} workers")
-    main_logger.info(f"Configuration: strategy={prompt_strategy}, postprocess={postprocess_strategy}, temp={temperature}")
+    main_logger.info(f"Configuration: strategy={prompt_strategy}, postprocess={postprocess_strategy}, temp={temperature}, max_tokens={max_tokens}, top_p={top_p}")
 
     results = []
     with ThreadPoolExecutor(max_workers=num_workers) as executor:
@@ -244,6 +265,9 @@ def run_inference(
                 prompt_fn,
                 postprocess_fn,
                 temperature,
+                max_tokens,
+                top_p,
+                stop,
             ): problem
             for problem in problems
         }
@@ -290,8 +314,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--temperature",
         type=float,
-        default=0.2,
-        help="Sampling temperature (default: 0.2)",
+        default=0.0,
+        help="Sampling temperature (default: 0.0)",
     )
     parser.add_argument(
         "--max-samples",
@@ -310,14 +334,33 @@ if __name__ == "__main__":
         "--postprocess-strategy",
         type=str,
         default="none",
-        choices=["none"],
-        help="Post-processing strategy (only 'none' is supported - raw model output)",
+        choices=list(POSTPROCESS_STRATEGIES.keys()),
+        help="Post-processing strategy (none=raw output, post_v1=fix crashes only)",
     )
     parser.add_argument(
         "--num-workers",
         type=int,
         default=None,
         help="Number of parallel workers (default: 16)",
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=512,
+        help="Maximum tokens to generate (default: 512)",
+    )
+    parser.add_argument(
+        "--top-p",
+        type=float,
+        default=1.0,
+        help="Nucleus sampling parameter (default: 1.0)",
+    )
+    parser.add_argument(
+        "--stop",
+        type=str,
+        nargs="+",
+        default=None,
+        help='Stop sequences (default: ["\\n\\n", "\\ndef ", "\\nclass ", "\\nif "])',
     )
 
     args = parser.parse_args()
@@ -330,4 +373,7 @@ if __name__ == "__main__":
         prompt_strategy=args.prompt_strategy,
         postprocess_strategy=args.postprocess_strategy,
         num_workers=args.num_workers,
+        max_tokens=args.max_tokens,
+        top_p=args.top_p,
+        stop=args.stop,
     )

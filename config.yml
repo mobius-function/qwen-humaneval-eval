@@ -4,13 +4,13 @@
 # vLLM Server Settings
 vllm:
   api_url: "http://localhost:8000/v1"
-  max_tokens: 768  # Increased from 512 to allow more complex implementations
-  top_p: 0.95
+  max_tokens: 512
+  top_p: 1.0
   stop_sequences:
-    - "\nclass "
+    - "\n\n"
     - "\ndef "
-    # REMOVED "\n#" - was too aggressive, stopped generation at inline comments
-    - "\nif __name__"
+    - "\nclass "
+    - "\nif "
 
 # Inference Settings
 inference:
@@ -43,7 +43,7 @@ experiments:
     enabled: true
     prompt_strategy: "minimal"
     postprocess_strategy: "none"
-    temperature: 0.2
+    temperature: 0.0
     output_file: "completions_minimal_none.jsonl"
     results_file: "evaluation_minimal_none.json"
 
@@ -137,20 +137,74 @@ experiments:
     output_file: "completions_opt1_none.jsonl"
     results_file: "evaluation_opt1_none.json"
 
-  - name: "try1_none"
-    description: "Minimal prompt v2 with anti-stub instruction (try1)"
-    enabled: true
-    prompt_strategy: "try1"
-    postprocess_strategy: "none"
-    temperature: 0.2
-    output_file: "completions_try1_none.jsonl"
-    results_file: "evaluation_try1_none.json"
-
   - name: "minimal_v2_none"
     description: "Minimal prompt with 'return' starter hint"
-    enabled: true
+    enabled: false
     prompt_strategy: "minimal_v2"
     postprocess_strategy: "none"
-    temperature: 0.2
+    temperature: 0.0
     output_file: "completions_minimal_v2_none.jsonl"
     results_file: "evaluation_minimal_v2_none.json"
+
+  - name: "minimal_v3_none"
+    description: "Ultra-minimal prompt with just problem + newline"
+    enabled: false
+    prompt_strategy: "minimal_v3"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_minimal_v3_none.jsonl"
+    results_file: "evaluation_minimal_v3_none.json"
+
+  - name: "minimal_v4_none"
+    description: "Minimal prompt with indentation hint"
+    enabled: false
+    prompt_strategy: "minimal_v4"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_minimal_v4_none.jsonl"
+    results_file: "evaluation_minimal_v4_none.json"
+
+  - name: "minimal_v5_none"
+    description: "Bare minimal prompt - just rstrip() with no additions"
+    enabled: false
+    prompt_strategy: "minimal_v5"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_minimal_v5_none.jsonl"
+    results_file: "evaluation_minimal_v5_none.json"
+
+  - name: "minimal_v6_none"
+    description: "Minimal prompt with anti-stub instruction"
+    enabled: false
+    prompt_strategy: "minimal_v6"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_minimal_v6_none.jsonl"
+    results_file: "evaluation_minimal_v6_none.json"
+
+  - name: "minimal_v7_none"
+    description: "Balanced prompt focusing on critical failure points"
+    enabled: false
+    prompt_strategy: "minimal_v7"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_minimal_v7_none.jsonl"
+    results_file: "evaluation_minimal_v7_none.json"
+
+  - name: "minimal_post_v1"
+    description: "Minimal prompt with post_v1 post-processing (fix crashes only)"
+    enabled: false
+    prompt_strategy: "minimal"
+    postprocess_strategy: "post_v1"
+    temperature: 0.0
+    output_file: "completions_minimal_post_v1.jsonl"
+    results_file: "evaluation_minimal_post_v1.json"
+
+  - name: "minimal_post_v5"
+    description: "Minimal prompt with post_v5 post-processing (production-ready pipeline)"
+    enabled: true
+    prompt_strategy: "minimal"
+    postprocess_strategy: "post_v5"
+    temperature: 0.0
+    output_file: "completions_minimal_post_v5.jsonl"
+    results_file: "evaluation_minimal_post_v5.json"
