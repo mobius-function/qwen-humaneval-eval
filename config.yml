@@ -29,100 +29,17 @@ dataset:
 # Experiment Configurations
 # Each experiment defines a unique combination of prompt strategy and settings
 experiments:
-  - name: "infilling_smart"
-    description: "Code infilling with TODO markers (best performance)"
-    enabled: false  # Disabled to test new optimized prompts
-    prompt_strategy: "infilling"
-    postprocess_strategy: "smart"
-    temperature: 0.2
-    output_file: "completions_infilling_smart.jsonl"
-    results_file: "evaluation_infilling_smart.json"
-
-  - name: "minimal_smart"
-    description: "Minimal prompt with smart post-processing"
-    enabled: false  # Disabled to test new optimized prompts
-    prompt_strategy: "minimal"
-    postprocess_strategy: "smart"
-    temperature: 0.2
-    output_file: "completions_minimal_smart.jsonl"
-    results_file: "evaluation_minimal_smart.json"
-
-  - name: "instructional_smart"
-    description: "Instructional prompt emphasizing correctness"
-    enabled: false  # Disabled to test new optimized prompts
-    prompt_strategy: "instructional"
-    postprocess_strategy: "smart"
-    temperature: 0.1
-    output_file: "completions_instructional_smart.jsonl"
-    results_file: "evaluation_instructional_smart.json"
-
-  - name: "fewshot_smart"
-    description: "Few-shot prompt with example"
-    enabled: false  # Set to true to run this experiment
-    prompt_strategy: "fewshot"
-    postprocess_strategy: "smart"
-    temperature: 0.2
-    output_file: "completions_fewshot_smart.jsonl"
-    results_file: "evaluation_fewshot_smart.json"
-
-  - name: "cot_smart"
-    description: "Chain of thought reasoning prompt"
-    enabled: false  # Set to true to run this experiment
-    prompt_strategy: "cot"
-    postprocess_strategy: "smart"
-    temperature: 0.3
-    output_file: "completions_cot_smart.jsonl"
-    results_file: "evaluation_cot_smart.json"
-
-  - name: "infilling_basic"
-    description: "Infilling with basic post-processing"
+  - name: "infilling_none"
+    description: "Code infilling with TODO markers (no post-processing)"
     enabled: false
     prompt_strategy: "infilling"
-    postprocess_strategy: "basic"
-    temperature: 0.2
-    output_file: "completions_infilling_basic.jsonl"
-    results_file: "evaluation_infilling_basic.json"
-
-  # Comparison: With vs Without Post-processing
-  - name: "infilling_no_postprocess"
-    description: "Infilling WITHOUT post-processing (raw model output)"
-    enabled: false  # Enable to compare against infilling_smart
-    prompt_strategy: "infilling"
     postprocess_strategy: "none"
     temperature: 0.2
-    output_file: "completions_infilling_raw.jsonl"
-    results_file: "evaluation_infilling_raw.json"
+    output_file: "completions_infilling_none.jsonl"
+    results_file: "evaluation_infilling_none.json"
 
-  - name: "minimal_no_postprocess"
-    description: "Minimal WITHOUT post-processing (raw model output)"
-    enabled: false  # Enable to compare against minimal_smart
-    prompt_strategy: "minimal"
-    postprocess_strategy: "none"
-    temperature: 0.2
-    output_file: "completions_minimal_raw.jsonl"
-    results_file: "evaluation_minimal_raw.json"
-
-  - name: "datadriven_smart"
-    description: "Data-driven prompt based on analysis of all 164 problems"
-    enabled: false  # Enable to test reverse-engineered prompt
-    prompt_strategy: "datadriven"
-    postprocess_strategy: "smart"
-    temperature: 0.2
-    output_file: "completions_datadriven_smart.jsonl"
-    results_file: "evaluation_datadriven_smart.json"
-
-  - name: "expert_smart"
-    description: "Expert-engineered prompt with self-review, persona, edge cases"
-    enabled: false  # Enable to test advanced prompting techniques
-    prompt_strategy: "expert"
-    postprocess_strategy: "smart"
-    temperature: 0.2
-    output_file: "completions_expert_smart.jsonl"
-    results_file: "evaluation_expert_smart.json"
-
-  # Compare: No post-processing vs Solution post-processing
   - name: "minimal_none"
-    description: "Minimal prompt with NO post-processing (raw output)"
+    description: "Minimal prompt (no post-processing)"
     enabled: true
     prompt_strategy: "minimal"
     postprocess_strategy: "none"
@@ -130,20 +47,83 @@ experiments:
     output_file: "completions_minimal_none.jsonl"
     results_file: "evaluation_minimal_none.json"
 
-  - name: "minimal_solution"
-    description: "Minimal prompt with solution-specific post-processing"
-    enabled: true
-    prompt_strategy: "minimal"
-    postprocess_strategy: "solution"
+  - name: "instructional_none"
+    description: "Instructional prompt emphasizing correctness"
+    enabled: false
+    prompt_strategy: "instructional"
+    postprocess_strategy: "none"
+    temperature: 0.1
+    output_file: "completions_instructional_none.jsonl"
+    results_file: "evaluation_instructional_none.json"
+
+  - name: "fewshot_none"
+    description: "Few-shot prompt with example"
+    enabled: false
+    prompt_strategy: "fewshot"
+    postprocess_strategy: "none"
     temperature: 0.2
-    output_file: "completions_minimal_solution.jsonl"
-    results_file: "evaluation_minimal_solution.json"
+    output_file: "completions_fewshot_none.jsonl"
+    results_file: "evaluation_fewshot_none.json"
+
+  - name: "cot_none"
+    description: "Chain of thought reasoning prompt"
+    enabled: false
+    prompt_strategy: "cot"
+    postprocess_strategy: "none"
+    temperature: 0.3
+    output_file: "completions_cot_none.jsonl"
+    results_file: "evaluation_cot_none.json"
+
+  - name: "datadriven_none"
+    description: "Data-driven prompt based on analysis of all 164 problems"
+    enabled: false
+    prompt_strategy: "datadriven"
+    postprocess_strategy: "none"
+    temperature: 0.2
+    output_file: "completions_datadriven_none.jsonl"
+    results_file: "evaluation_datadriven_none.json"
+
+  - name: "expert_none"
+    description: "Expert-engineered prompt with self-review, persona, edge cases"
+    enabled: false
+    prompt_strategy: "expert"
+    postprocess_strategy: "none"
+    temperature: 0.2
+    output_file: "completions_expert_none.jsonl"
+    results_file: "evaluation_expert_none.json"
 
   - name: "helper_none"
-    description: "Helper prompt with code patterns, no post-processing"
+    description: "Helper prompt with code patterns"
     enabled: true
     prompt_strategy: "helper"
     postprocess_strategy: "none"
     temperature: 0.2
     output_file: "completions_helper_none.jsonl"
     results_file: "evaluation_helper_none.json"
+
+  - name: "optimized_v1_none"
+    description: "Optimized prompt v1"
+    enabled: false
+    prompt_strategy: "optimized_v1"
+    postprocess_strategy: "none"
+    temperature: 0.2
+    output_file: "completions_optimized_v1_none.jsonl"
+    results_file: "evaluation_optimized_v1_none.json"
+
+  - name: "optimized_v2_none"
+    description: "Optimized prompt v2"
+    enabled: false
+    prompt_strategy: "optimized_v2"
+    postprocess_strategy: "none"
+    temperature: 0.2
+    output_file: "completions_optimized_v2_none.jsonl"
+    results_file: "evaluation_optimized_v2_none.json"
+
+  - name: "optimized_v3_none"
+    description: "Optimized prompt v3"
+    enabled: false
+    prompt_strategy: "optimized_v3"
+    postprocess_strategy: "none"
+    temperature: 0.2
+    output_file: "completions_optimized_v3_none.jsonl"
+    results_file: "evaluation_optimized_v3_none.json"

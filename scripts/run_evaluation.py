@@ -109,7 +109,7 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
             "passed": False,
             "error": f"Timeout after {timeout} seconds",
             "raw_completion": completion.get("raw_completion"),
-            "cleaned_completion": completion.get("completion"),
+            "completion": completion.get("completion"),
         }
     except Exception as e:
         return {
@@ -117,7 +117,7 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
             "passed": False,
             "error": str(e),
             "raw_completion": completion.get("raw_completion"),
-            "cleaned_completion": completion.get("completion"),
+            "completion": completion.get("completion"),
         }
 
 
@@ -219,10 +219,10 @@ def evaluate_completions(
                     f.write(test_info['prompt'] + "\n")
                     f.write("\n")
 
-                    f.write("GENERATED CODE:\n")
+                    f.write("GENERATED CODE (RAW MODEL OUTPUT):\n")
                     f.write("-"*80 + "\n")
-                    completion = result.get('completion', 'N/A')
-                    f.write(completion + "\n")
+                    raw_completion = result.get('raw_completion', 'N/A')
+                    f.write(raw_completion + "\n")
                     f.write("\n")
 
                     if not passed:
@@ -258,9 +258,10 @@ def evaluate_completions(
                     f.write(test_info['prompt'] + "\n")
                     f.write("\n")
 
-                    f.write("GENERATED CODE:\n")
+                    f.write("GENERATED CODE (RAW MODEL OUTPUT):\n")
                     f.write("-"*80 + "\n")
-                    f.write(result.get('completion', 'N/A') + "\n")
+                    f.write(result.get('raw_completion', 'N/A') + "\n")
+                    f.write("\n")
                 else:
                     f.write(f"WARNING: Could not find test info for {task_id}\n")
 

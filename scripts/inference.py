@@ -171,7 +171,7 @@ def run_inference(
     temperature: float = 0.2,
     max_samples: int = None,
     prompt_strategy: str = "infilling",
-    postprocess_strategy: str = "smart",
+    postprocess_strategy: str = "none",
     num_workers: int = None,
 ):
     """
@@ -182,8 +182,8 @@ def run_inference(
         api_url: vLLM API URL
         temperature: Sampling temperature
         max_samples: Limit number of samples (for testing)
-        prompt_strategy: Prompting strategy (minimal, infilling, instructional, fewshot, cot)
-        postprocess_strategy: Post-processing strategy (basic, smart)
+        prompt_strategy: Prompting strategy (minimal, infilling, instructional, fewshot, cot, etc.)
+        postprocess_strategy: Post-processing strategy (only 'none' supported - returns raw model output)
         num_workers: Number of parallel workers (default: 16)
     """
     # Setup logging
@@ -196,9 +196,15 @@ def run_inference(
     inference = VLLMInference(api_url)
     main_logger.info(f"Initialized vLLM client at {api_url}")
 
-    # Get prompt and postprocess functions
-    prompt_fn = PROMPT_STRATEGIES.get(prompt_strategy, PROMPT_STRATEGIES['infilling'])
-    postprocess_fn = POSTPROCESS_STRATEGIES.get(postprocess_strategy, POSTPROCESS_STRATEGIES['basic'])
+    # Get prompt function
+    if prompt_strategy not in PROMPT_STRATEGIES:
+        raise ValueError(f"Unknown prompt strategy: '{prompt_strategy}'. Available: {list(PROMPT_STRATEGIES.keys())}")
+    prompt_fn = PROMPT_STRATEGIES[prompt_strategy]
+
+    # Get postprocess function (only 'none' is supported)
+    if postprocess_strategy != 'none':
+        raise ValueError(f"Only 'none' post-processing is supported. Got: '{postprocess_strategy}'")
+    postprocess_fn = POSTPROCESS_STRATEGIES['none']
 
     # Load dataset
     problems = load_humaneval()
@@ -303,9 +309,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--postprocess-strategy",
         type=str,
-        default="smart",
-        choices=list(POSTPROCESS_STRATEGIES.keys()),
-        help="Post-processing strategy to use",
+        default="none",
+        choices=["none"],
+        help="Post-processing strategy (only 'none' is supported - raw model output)",
     )
     parser.add_argument(
         "--num-workers",

@@ -102,6 +102,12 @@ def create_chain_of_thought_prompt(problem: str) -> str:
     return prompt
 
 
+# Post-processing strategies
+POSTPROCESS_STRATEGIES = {
+    'none': lambda c, p, e=None: c,  # No post-processing - raw output
+}
+
+
 def enhanced_post_process(completion: str, prompt: str) -> str:
     """
     Enhanced post-processing with better code extraction.
@@ -607,9 +613,5 @@ def solution_post_process(completion: str, prompt: str, entry_point: str = None)
     return code_str
 
 
-# Mapping of post-processing strategies
-POSTPROCESS_STRATEGIES = {
-    'none': lambda c, p, e=None: c,  # No post-processing - raw output
-    'basic': lambda c, p, e=None: enhanced_post_process(c, p),
-    'solution': solution_post_process,  # Solution-specific fixes
-}
+# Note: POSTPROCESS_STRATEGIES moved to top of file (after chain_of_thought_prompt)
+# Only 'none' strategy is supported - no post-processing
