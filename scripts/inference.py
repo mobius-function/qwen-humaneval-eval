@@ -198,7 +198,7 @@ def run_inference(
 
     # Get prompt and postprocess functions
     prompt_fn = PROMPT_STRATEGIES.get(prompt_strategy, PROMPT_STRATEGIES['infilling'])
-    postprocess_fn = POSTPROCESS_STRATEGIES.get(postprocess_strategy, POSTPROCESS_STRATEGIES['smart'])
+    postprocess_fn = POSTPROCESS_STRATEGIES.get(postprocess_strategy, POSTPROCESS_STRATEGIES['basic'])
 
     # Load dataset
     problems = load_humaneval()
