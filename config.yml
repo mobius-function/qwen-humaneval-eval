@@ -145,3 +145,12 @@ experiments:
     temperature: 0.2
     output_file: "completions_try1_none.jsonl"
     results_file: "evaluation_try1_none.json"
+
+  - name: "minimal_v2_none"
+    description: "Minimal prompt with 'return' starter hint"
+    enabled: true
+    prompt_strategy: "minimal_v2"
+    postprocess_strategy: "none"
+    temperature: 0.2
+    output_file: "completions_minimal_v2_none.jsonl"
+    results_file: "evaluation_minimal_v2_none.json"

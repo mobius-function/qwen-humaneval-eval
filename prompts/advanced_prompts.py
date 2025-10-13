@@ -1,7 +1,7 @@
 """Advanced prompt templates for better code generation."""
 
 import re
-from prompts.code_completion import create_minimal_prompt_v2
+from prompts.code_completion import create_minimal_prompt_v2, create_minimal_v2
 
 
 def create_infilling_prompt(problem: str) -> str:
@@ -701,6 +701,7 @@ def categorize_and_prompt(problem: str) -> str:
 # Mapping of strategy names to prompt functions
 PROMPT_STRATEGIES = {
     'minimal': create_minimal_prompt,
+    'minimal_v2': create_minimal_v2,  # Minimal prompt with 'return' starter
     'infilling': create_infilling_prompt,
     'instructional': create_instructional_prompt,
     'fewshot': create_fewshot_prompt,

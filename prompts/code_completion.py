@@ -49,6 +49,24 @@ def create_minimal_prompt_v2(problem: str) -> str:
 # Implement completely. No pass statements. No undefined functions."""
 
 
+def create_minimal_v2(problem: str) -> str:
+    """
+    Minimal prompt that primes with 'return' keyword.
+    Includes the function signature, docstring, and a 'return' hint to
+    encourage the model to generate complete implementations.
+
+    This strategy primes the model to start with a return statement,
+    which often leads to more complete and working code.
+
+    Args:
+        problem: The function signature and docstring from HumanEval
+
+    Returns:
+        Formatted prompt string with 'return' starter
+    """
+    return problem.rstrip() + "\n    return"
+
+
 def post_process_completion(completion: str, prompt: str) -> str:
     """
     Post-process the model completion to extract clean code.
