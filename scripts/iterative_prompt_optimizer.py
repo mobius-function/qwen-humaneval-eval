@@ -21,7 +21,7 @@ from tqdm import tqdm
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from scripts.inference import generate_completion, get_vllm_client
+from scripts.inference import VLLMInference
 from scripts.run_evaluation import evaluate_completions
 from prompts.advanced_prompts import create_minimal_prompt, smart_post_process
 
@@ -62,7 +62,7 @@ class PromptOptimizer:
         logger.info(f"Loaded {len(self.dataset)} problems")
 
         # Initialize vLLM client
-        self.client = get_vllm_client()
+        self.client = VLLMInference(api_url="http://localhost:8000/v1")
 
     def analyze_batch_results(
         self,
@@ -387,11 +387,12 @@ class PromptOptimizer:
             prompt = self.create_prompt_with_instructions(problem, prompt_instructions)
 
             # Generate completion
-            raw_completion = generate_completion(
-                self.client,
+            stop_sequences = ["\nclass ", "\ndef ", "\nif __name__"]
+            raw_completion = self.client.generate_completion(
                 prompt,
+                max_tokens=self.max_tokens,
                 temperature=self.temperature,
-                max_tokens=self.max_tokens
+                stop=stop_sequences
             )
 
             # Post-process
@@ -421,11 +422,12 @@ class PromptOptimizer:
             prompt = self.create_prompt_with_instructions(problem, prompt_instructions)
 
             # Generate completion
-            raw_completion = generate_completion(
-                self.client,
+            stop_sequences = ["\nclass ", "\ndef ", "\nif __name__"]
+            raw_completion = self.client.generate_completion(
                 prompt,
+                max_tokens=self.max_tokens,
                 temperature=self.temperature,
-                max_tokens=self.max_tokens
+                stop=stop_sequences
             )
 
             # Post-process
