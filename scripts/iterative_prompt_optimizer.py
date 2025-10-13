@@ -39,22 +39,12 @@ def create_dynamic_prompt_strategy(instructions: str):
         Prompt function compatible with PROMPT_STRATEGIES
     """
     def dynamic_prompt(problem: str) -> str:
-        # Base prompt with role assignment
-        base_prompt = f"""You are an expert Python programmer. Your task is to implement the function below based on its docstring.
-
-{problem}
-
-IMPORTANT:
-- The examples in the docstring are test cases - verify your implementation matches them
-- Write general code that works on ANY valid input, not just the examples
-- Do not hardcode outputs - implement the actual logic described in the docstring"""
-
         if not instructions:
-            return base_prompt  # Base prompt with role
+            return problem  # Minimal prompt
 
-        return f"""{base_prompt}
+        return f"""{problem}
 
-# Additional Guidelines:
+# Important Guidelines:
 {instructions}
 """
 
