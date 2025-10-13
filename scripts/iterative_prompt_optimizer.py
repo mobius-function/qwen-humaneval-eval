@@ -59,7 +59,7 @@ def analyze_failures(results: List[Dict]) -> Dict:
         results: List of evaluation results
 
     Returns:
-        Analysis dictionary with error patterns
+        Analysis dictionary with error patterns and detailed results
     """
     failures = [r for r in results if not r['passed']]
     successes = [r for r in results if r['passed']]
@@ -90,6 +90,7 @@ def analyze_failures(results: List[Dict]) -> Dict:
         'failures': len(failures),
         'successes': len(successes),
         'error_categories': error_categories,
+        'detailed_results': results,  # Include full results for detailed analysis
     }
 
 
@@ -132,15 +133,53 @@ def generate_refined_instructions(
         history_summary += f"\nIteration {iter_num}: {acc:.3f} ({passed}/164 passed)\n"
         history_summary += f"Instructions:\n{instructions}\n"
 
+    # Get actual failure details from current_results (passed via analysis)
+    failures_list = [r for r in analysis.get('detailed_results', []) if not r['passed']]
+
+    # Load the HumanEval dataset to get original prompts
+    from datasets import load_dataset
+    humaneval = load_dataset("openai_humaneval", split="test")
+    humaneval_dict = {item['task_id']: item for item in humaneval}
+
+    # Sample some failures for context (show first 5 to avoid huge prompts, with full details)
+    failure_examples = ""
+    for i, fail in enumerate(failures_list[:5]):
+        task_id = fail['task_id']
+        error = fail.get('error', 'Unknown error')
+
+        # Get the original problem prompt
+        original_problem = humaneval_dict.get(task_id, {}).get('prompt', 'N/A')
+        if len(original_problem) > 400:
+            original_problem = original_problem[:400] + "\n... (truncated)"
+
+        # Get the generated code if available
+        generated_code = fail.get('completion', 'N/A')
+        if len(generated_code) > 300:
+            generated_code = generated_code[:300] + "\n... (truncated)"
+
+        failure_examples += f"""
+Failure {i+1}: {task_id}
+
+Original Problem:
+{original_problem}
+
+Generated Code:
+{generated_code}
+
+Error:
+{error[:400]}
+
+---"""
+
+    if len(failures_list) > 5:
+        failure_examples += f"\n\n... and {len(failures_list) - 5} more failures"
+
     # Current failure analysis
     failure_summary = f"""
 Current baseline failures: {failures}/{total}
-Error breakdown:
-- Syntax errors: {error_cats['syntax_errors']}
-- Assertion errors: {error_cats['assertion_errors']}
-- Type errors: {error_cats['type_errors']}
-- Index/Key errors: {error_cats['index_errors']}
-- Timeout errors: {error_cats['timeout_errors']}
+
+Sample of actual failures (first 10):
+{failure_examples}
 """
 
     # Ask Qwen to generate refined instructions
