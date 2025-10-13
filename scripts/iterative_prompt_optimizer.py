@@ -93,13 +93,24 @@ def analyze_failures(results: List[Dict]) -> Dict:
     }
 
 
-def generate_refined_instructions(current_instructions: str, analysis: Dict) -> str:
+def generate_refined_instructions(
+    current_instructions: str,
+    analysis: Dict,
+    iteration_history: List[Dict],
+    client
+) -> str:
     """
-    Generate refined prompt instructions based on failure analysis.
+    Generate refined prompt instructions using Qwen as the evaluator.
+
+    Uses the LLM to analyze:
+    1. Previous prompt attempts and their accuracy
+    2. Current failure patterns
 
     Args:
         current_instructions: Current prompt instructions
         analysis: Failure analysis dictionary
+        iteration_history: List of previous iterations with prompts and accuracy
+        client: VLLMInference client to call Qwen
 
     Returns:
         Updated instructions
@@ -111,15 +122,89 @@ def generate_refined_instructions(current_instructions: str, analysis: Dict) -> 
     if failures == 0:
         return current_instructions
 
+    # Build context for Qwen
+    history_summary = "Previous prompt attempts:\n"
+    for hist in iteration_history:
+        iter_num = hist['iteration']
+        acc = hist['accuracy']
+        passed = hist['passed']
+        instructions = hist['instructions'] if hist['instructions'] else "[Minimal - no instructions]"
+        history_summary += f"\nIteration {iter_num}: {acc:.3f} ({passed}/164 passed)\n"
+        history_summary += f"Instructions:\n{instructions}\n"
+
+    # Current failure analysis
+    failure_summary = f"""
+Current baseline failures: {failures}/{total}
+Error breakdown:
+- Syntax errors: {error_cats['syntax_errors']}
+- Assertion errors: {error_cats['assertion_errors']}
+- Type errors: {error_cats['type_errors']}
+- Index/Key errors: {error_cats['index_errors']}
+- Timeout errors: {error_cats['timeout_errors']}
+"""
+
+    # Ask Qwen to generate refined instructions
+    meta_prompt = f"""You are a prompt optimization expert. Your task is to improve a prompt for code generation.
+
+{history_summary}
+
+{failure_summary}
+
+Current instructions being used:
+{current_instructions if current_instructions else "[Minimal - no instructions]"}
+
+Based on the iteration history (what worked vs what didn't) and current failure patterns, generate IMPROVED instructions for the code generation prompt.
+
+Requirements:
+1. Learn from history: If previous refinements didn't improve accuracy, try a different approach
+2. Target the specific error types that are failing
+3. Be concise but specific
+4. Output ONLY the new instructions (bullet points starting with "-")
+5. Do NOT repeat instructions that already exist
+6. If assertion errors are high, emphasize examples/test cases
+7. If the current approach isn't working, try a fundamentally different strategy
+
+Output the refined instructions below (just the bullet points, nothing else):
+"""
+
+    # Call Qwen to generate refinement
+    try:
+        response = client.generate_completion(
+            prompt=meta_prompt,
+            max_tokens=512,
+            temperature=0.7,  # Higher temp for creativity
+            stop=["\n\n\n", "---"]
+        )
+
+        # Extract and clean the response
+        new_instructions = response.strip()
+
+        # If Qwen didn't generate anything useful, fall back to rule-based
+        if not new_instructions or len(new_instructions) < 20:
+            logger.warning("Qwen didn't generate useful instructions, falling back to rule-based")
+            return fallback_refinement(current_instructions, analysis)
+
+        logger.info(f"Qwen generated {len(new_instructions.split(chr(10)))} lines of new instructions")
+        return new_instructions
+
+    except Exception as e:
+        logger.error(f"Error calling Qwen for refinement: {e}")
+        return fallback_refinement(current_instructions, analysis)
+
+
+def fallback_refinement(current_instructions: str, analysis: Dict) -> str:
+    """Fallback rule-based refinement if Qwen fails."""
+    error_cats = analysis['error_categories']
+    failures = analysis['failures']
+    total = analysis['total']
+
     refinements = []
 
-    # Add refinements based on error patterns
     if error_cats['syntax_errors'] > 0:
         refinements.append("- Write complete, syntactically correct Python code")
 
     if error_cats['assertion_errors'] > failures * 0.3:
         refinements.append("- CRITICAL: Examples in docstring are test cases - your code MUST pass them exactly")
-        refinements.append("- Trace through each example to verify your logic")
 
     if error_cats['type_errors'] > 0:
         refinements.append("- Pay attention to return types (list vs tuple, int vs float)")
@@ -129,9 +214,7 @@ def generate_refined_instructions(current_instructions: str, analysis: Dict) -> 
 
     if failures > total * 0.6:
         refinements.append("- Read docstring carefully - requirements are precisely specified")
-        refinements.append("- Think step-by-step about the algorithm")
 
-    # Remove duplicates
     if current_instructions:
         existing = set(current_instructions.split('\n'))
         refinements = [r for r in refinements if r not in existing]
@@ -139,7 +222,6 @@ def generate_refined_instructions(current_instructions: str, analysis: Dict) -> 
     if not refinements:
         return current_instructions
 
-    # Combine
     if current_instructions:
         return current_instructions + "\n" + "\n".join(refinements)
     else:
@@ -209,6 +291,11 @@ def optimize():
 
     max_iterations = 10
 
+    # Initialize vLLM client for meta-prompting
+    from scripts.inference import VLLMInference
+    client = VLLMInference(api_url="http://localhost:8000/v1")
+    logger.info("Initialized Qwen client for prompt optimization")
+
     # Initialize with minimal prompt
     current_instructions = ""
     current_results = None
@@ -249,8 +336,14 @@ def optimize():
             logger.info("Perfect score! No refinement needed.")
             break
 
-        # Generate refined instructions based on current_results
-        new_instructions = generate_refined_instructions(current_instructions, analysis)
+        # Generate refined instructions using Qwen as evaluator
+        logger.info("Calling Qwen to generate refined prompt based on history and failures...")
+        new_instructions = generate_refined_instructions(
+            current_instructions,
+            analysis,
+            iteration_history,
+            client
+        )
 
         if new_instructions == current_instructions:
             logger.info("No new refinements generated. Stopping.")
