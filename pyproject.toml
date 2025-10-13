@@ -16,6 +16,10 @@ dependencies = [
     "pyyaml>=6.0",
     "ruff>=0.14.0",
     "vllm>=0.11.0",
+    "torch>=2.0.0",
+    "transformers>=4.35.0",
+    "accelerate>=0.25.0",
+    "tqdm>=4.65.0",
 ]
 
 [tool.setuptools.packages.find]

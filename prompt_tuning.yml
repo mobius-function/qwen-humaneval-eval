@@ -1,0 +1,63 @@
+# Soft Prompt Tuning Configuration for Qwen2.5-Coder-0.5B
+# This file configures training of continuous soft prompt embeddings
+
+# Model Configuration
+model:
+  name: "Qwen/Qwen2.5-Coder-0.5B"
+  trust_remote_code: true
+  torch_dtype: "float16"  # Use float16 for GPU, float32 for CPU
+
+# Soft Prompt Configuration
+soft_prompts:
+  num_virtual_tokens: 20  # Number of learnable prompt tokens (typically 10-100)
+  init_from_vocab: true   # Initialize from random vocab embeddings (better than random)
+  embedding_dim: 896      # Qwen2.5-Coder-0.5B hidden size (auto-detected if not specified)
+
+# Training Configuration
+training:
+  batch_size: 4                    # Per-device batch size
+  gradient_accumulation_steps: 4   # Effective batch size = 4 * 4 = 16
+  num_epochs: 10                   # Number of training epochs
+  learning_rate: 0.01              # Higher LR for prompt tuning (0.01 - 0.1)
+  warmup_steps: 100                # LR warmup steps
+  max_grad_norm: 1.0               # Gradient clipping
+  weight_decay: 0.01               # Weight decay for regularization
+
+# Dataset Configuration
+dataset:
+  train_val_split: 0.8             # 80% train, 20% validation
+  max_samples: null                # Limit samples for debugging (null = use all)
+  max_length: 1024                 # Maximum sequence length
+  seed: 42                         # Random seed for reproducibility
+
+# Evaluation Configuration
+evaluation:
+  eval_every_n_epochs: 1           # Evaluate every N epochs
+  save_best_only: false            # Save all checkpoints or only best
+  early_stopping_patience: 3       # Stop if no improvement for N epochs
+
+# Output Configuration
+output:
+  output_dir: "soft_prompts"                    # Directory to save trained prompts
+  checkpoint_prefix: "soft_prompts_epoch"       # Checkpoint file prefix
+  best_checkpoint_name: "best_soft_prompts.pt"  # Best checkpoint filename
+  log_dir: "logs"                               # Log directory
+
+# Hardware Configuration
+hardware:
+  device: "auto"  # auto, cuda, cpu
+  mixed_precision: true  # Use mixed precision training (faster on GPU)
+  num_workers: 0  # DataLoader workers (0 = main process only)
+
+# Logging Configuration
+logging:
+  log_interval: 10  # Log every N steps
+  verbose: true     # Detailed logging
+
+# Inference Configuration (for using trained soft prompts)
+inference:
+  checkpoint_path: "soft_prompts/best_soft_prompts.pt"  # Path to trained prompts
+  max_new_tokens: 512                                    # Maximum tokens to generate
+  temperature: 0.0                                       # Sampling temperature (0 = greedy)
+  top_p: 1.0                                             # Nucleus sampling
+  output_path: "results/completions_soft_prompts.jsonl" # Output file
