@@ -296,84 +296,8 @@ def run_inference(
 
 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Run inference on HumanEval")
-    parser.add_argument(
-        "--output",
-        type=str,
-        default="results/completions.jsonl",
-        help="Output file path",
-    )
-    parser.add_argument(
-        "--api-url",
-        type=str,
-        default=None,
-        help="vLLM API URL (default: http://localhost:8000/v1)",
-    )
-    parser.add_argument(
-        "--temperature",
-        type=float,
-        default=0.0,
-        help="Sampling temperature (default: 0.0)",
-    )
-    parser.add_argument(
-        "--max-samples",
-        type=int,
-        default=None,
-        help="Maximum number of samples to process (for testing)",
-    )
-    parser.add_argument(
-        "--prompt-strategy",
-        type=str,
-        default="infilling",
-        choices=list(PROMPT_STRATEGIES.keys()),
-        help="Prompting strategy to use",
-    )
-    parser.add_argument(
-        "--postprocess-strategy",
-        type=str,
-        default="none",
-        choices=list(POSTPROCESS_STRATEGIES.keys()),
-        help="Post-processing strategy (none=raw output, post_v1=fix crashes only)",
-    )
-    parser.add_argument(
-        "--num-workers",
-        type=int,
-        default=None,
-        help="Number of parallel workers (default: 16)",
-    )
-    parser.add_argument(
-        "--max-tokens",
-        type=int,
-        default=512,
-        help="Maximum tokens to generate (default: 512)",
-    )
-    parser.add_argument(
-        "--top-p",
-        type=float,
-        default=1.0,
-        help="Nucleus sampling parameter (default: 1.0)",
-    )
-    parser.add_argument(
-        "--stop",
-        type=str,
-        nargs="+",
-        default=None,
-        help='Stop sequences (default: ["\\n\\n", "\\ndef ", "\\nclass ", "\\nif "])',
-    )
-
-    args = parser.parse_args()
-
-    run_inference(
-        output_path=args.output,
-        api_url=args.api_url,
-        temperature=args.temperature,
-        max_samples=args.max_samples,
-        prompt_strategy=args.prompt_strategy,
-        postprocess_strategy=args.postprocess_strategy,
-        num_workers=args.num_workers,
-        max_tokens=args.max_tokens,
-        top_p=args.top_p,
-        stop=args.stop,
-    )
+    print("This script should be called via run_experiments.py with config.yml")
+    print("Example: python scripts/run_experiments.py")
+    print("\nFor direct usage, use run_experiments.py with --experiment flag:")
+    print("  python scripts/run_experiments.py --experiment minimal_none")
+    sys.exit(1)

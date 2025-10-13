@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import List, Dict, Tuple
 
+import yaml
 from datasets import load_dataset
 from rich.console import Console
 from rich.table import Table
@@ -344,49 +345,36 @@ def analyze_failures(results_file: str = "results/evaluation_results.json"):
 
 
 if __name__ == "__main__":
-    import argparse
+    # Load config from YAML file
+    config_path = "prompt_tuning.yml"
 
-    parser = argparse.ArgumentParser(description="Evaluate HumanEval completions")
-    parser.add_argument(
-        "--completions",
-        type=str,
-        default="results/completions.jsonl",
-        help="Path to completions file",
-    )
-    parser.add_argument(
-        "--output",
-        type=str,
-        default="results/evaluation_results.json",
-        help="Path to save evaluation results",
-    )
-    parser.add_argument(
-        "--timeout",
-        type=int,
-        default=3,
-        help="Timeout for each test in seconds",
-    )
-    parser.add_argument(
-        "--workers",
-        type=int,
-        default=None,
-        help="Number of parallel workers (default: CPU count)",
-    )
-    parser.add_argument(
-        "--analyze",
-        action="store_true",
-        help="Analyze failures after evaluation",
+    if not Path(config_path).exists():
+        console.print(f"[red]Error: Config file not found: {config_path}[/red]")
+        sys.exit(1)
+
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+    # Get evaluation settings from config
+    eval_config = config.get("evaluation", {})
+
+    # Get completions path from inference config
+    completions_file = config.get("inference", {}).get(
+        "output_path", "results/completions.jsonl"
     )
 
-    args = parser.parse_args()
+    # Derive evaluation results path from completions path
+    completions_stem = Path(completions_file).stem
+    output_file = f"results/evaluation_{completions_stem.replace('completions_', '')}.json"
+
+    # Get other evaluation parameters
+    timeout = eval_config.get("timeout", 3)
+    num_workers = eval_config.get("num_workers", None)
 
     # Run evaluation
     results = evaluate_completions(
-        completions_file=args.completions,
-        output_file=args.output,
-        timeout=args.timeout,
-        num_workers=args.workers,
+        completions_file=completions_file,
+        output_file=output_file,
+        timeout=timeout,
+        num_workers=num_workers,
     )
-
-    # Analyze failures if requested
-    if args.analyze:
-        analyze_failures(args.output)

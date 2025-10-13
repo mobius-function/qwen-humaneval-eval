@@ -69,22 +69,8 @@ def reprocess_completions(input_file: str, output_file: str):
 
 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Re-process completions with updated post-processing")
-    parser.add_argument(
-        "--input",
-        type=str,
-        required=True,
-        help="Path to original completions file",
-    )
-    parser.add_argument(
-        "--output",
-        type=str,
-        required=True,
-        help="Path to save reprocessed completions",
-    )
-
-    args = parser.parse_args()
-
-    reprocess_completions(args.input, args.output)
+    print("This is a utility script - import and call reprocess_completions() directly")
+    print("\nExample usage in Python:")
+    print('  from scripts.reprocess_completions import reprocess_completions')
+    print('  reprocess_completions("results/completions.jsonl", "results/completions_reprocessed.jsonl")')
+    sys.exit(1)
