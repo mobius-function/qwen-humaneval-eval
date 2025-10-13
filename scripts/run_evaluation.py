@@ -190,6 +190,50 @@ def evaluate_completions(
         log_dir = Path("logs")
         log_dir.mkdir(exist_ok=True)
         exp_name = output_path.stem.replace("evaluation_", "")
+
+        # Save comprehensive log with ALL test cases
+        all_cases_log = log_dir / f"{exp_name}_all_cases.log"
+
+        with open(all_cases_log, 'w') as f:
+            f.write(f"ALL TEST CASES - {passed_count} passed, {len(failed_results)} failed out of {total_count}\n")
+            f.write("="*80 + "\n\n")
+
+            for idx, result in enumerate(results, 1):
+                task_id = result['task_id']
+                passed = result['passed']
+                status = "✓ PASSED" if passed else "✗ FAILED"
+
+                f.write(f"[{idx}/{total_count}] {task_id} - {status}\n")
+                f.write("="*80 + "\n")
+
+                # Get the original problem
+                if task_id in tests:
+                    test_info = tests[task_id]
+
+                    f.write("INPUT DOCSTRING:\n")
+                    f.write("-"*80 + "\n")
+                    f.write(test_info['prompt'] + "\n")
+                    f.write("\n")
+
+                    f.write("GENERATED CODE:\n")
+                    f.write("-"*80 + "\n")
+                    completion = result.get('completion', 'N/A')
+                    f.write(completion + "\n")
+                    f.write("\n")
+
+                    if not passed:
+                        f.write("ERROR:\n")
+                        f.write("-"*80 + "\n")
+                        f.write(result.get('error', 'No error message') + "\n")
+                        f.write("\n")
+                else:
+                    f.write(f"WARNING: Could not find test info for {task_id}\n")
+
+                f.write("\n" + "="*80 + "\n\n")
+
+        console.print(f"[dim]All cases log saved to: {all_cases_log}[/dim]")
+
+        # Also save failures-only log for quick reference
         failures_log = log_dir / f"{exp_name}_failures.log"
 
         with open(failures_log, 'w') as f:
@@ -203,39 +247,22 @@ def evaluate_completions(
                 f.write(f"Error: {result.get('error', 'No error message')}\n")
                 f.write("\n")
 
-                # Get the original problem and test info
                 if task_id in tests:
                     test_info = tests[task_id]
-
-                    f.write("ORIGINAL PROBLEM:\n")
+                    f.write("INPUT DOCSTRING:\n")
                     f.write("-"*80 + "\n")
                     f.write(test_info['prompt'] + "\n")
                     f.write("\n")
 
-                    f.write("TEST CODE:\n")
+                    f.write("GENERATED CODE:\n")
                     f.write("-"*80 + "\n")
-                    f.write(test_info['test'] + "\n")
-                    f.write("\n")
+                    f.write(result.get('completion', 'N/A') + "\n")
                 else:
                     f.write(f"WARNING: Could not find test info for {task_id}\n")
-                    f.write("\n")
-
-                f.write("-"*80 + "\n")
-
-                if result.get('raw_completion'):
-                    f.write("BEFORE POST-PROCESSING (Raw Model Output):\n")
-                    f.write("-"*80 + "\n")
-                    f.write(result['raw_completion'] + "\n")
-                    f.write("\n" + "-"*80 + "\n")
-                    f.write("AFTER POST-PROCESSING (Cleaned Output):\n")
-                    f.write("-"*80 + "\n")
-                    f.write(result.get('cleaned_completion', 'N/A') + "\n")
-                else:
-                    f.write("(Raw completion not available)\n")
 
                 f.write("\n" + "="*80 + "\n\n")
 
-        console.print(f"[dim]Failure analysis saved to: {failures_log}[/dim]")
+        console.print(f"[dim]Failures log saved to: {failures_log}[/dim]")
 
     # Print summary with Rich table
     console.print()
