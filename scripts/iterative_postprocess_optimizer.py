@@ -171,7 +171,7 @@ def post_process(raw_completion: str, prompt: str) -> str:
         response = client.generate_completion(
             prompt=meta_prompt,
             max_tokens=800,
-            temperature=0.7,
+            temperature=0.9,  # Higher temp for more diverse code generation
             stop=["```\n\n", "# Test", "# Example"]
         )
 
@@ -297,7 +297,7 @@ def optimize():
     logger.info("Starting Iterative Post-Processing Optimization")
     logger.info("="*80)
 
-    max_iterations = 10
+    max_iterations = 20
 
     # Initialize vLLM client for meta-prompting
     from scripts.inference import VLLMInference
@@ -355,8 +355,7 @@ def optimize():
         )
 
         if new_postprocess_code == current_postprocess_code:
-            logger.info("No new post-processing code generated. Stopping.")
-            break
+            logger.info("Generated same code as current. Will continue anyway to try again.")
 
         logger.info(f"\nGenerated new post-processing code:\n{new_postprocess_code}\n")
 
