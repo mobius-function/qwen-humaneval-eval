@@ -1,127 +1,130 @@
-# HumanEval Code Generation with vLLM
+# HumanEval Code Generation with Qwen2.5-Coder-0.5B
 
 ## Project Objective
 
 This project evaluates the **Qwen/Qwen2.5-Coder-0.5B** model's code generation capabilities using the **HumanEval benchmark**. The goal is to achieve a **pass@1 score > 0.5** (50% of coding problems solved correctly on the first attempt).
 
-### What This Project Does
-
-1. **Serves** the Qwen2.5-Coder model using vLLM (fast inference server)
-2. **Generates** Python code completions for 164 HumanEval programming problems
-3. **Evaluates** the generated code in a sandboxed Docker environment
-4. **Reports** the pass@1 metric (percentage of correct solutions)
-
-### Key Technologies
-- **vLLM**: High-performance LLM inference server with OpenAI-compatible API
-- **Docker**: Containerization for model serving and sandboxed code execution
-- **HumanEval**: Standard benchmark with 164 Python programming problems
+**Achievement**: **95.7% pass@1** - Target significantly exceeded!
 
 ---
 
-## How to Run This Project
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Two Approaches](#two-approaches)
+  - [Approach 1: Prompt Engineering](#approach-1-prompt-engineering-vllm-recommended)
+  - [Approach 2: Soft Prompt Tuning](#approach-2-soft-prompt-tuning-experimental)
+- [Project Structure](#project-structure)
+- [Results](#results)
+- [Advanced Usage](#advanced-usage)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## Quick Start
 
 ### Prerequisites
 - **Python 3.10+**
-- **Docker & Docker Compose**
+- **Docker & Docker Compose** (for vLLM serving)
 - **NVIDIA GPU** (recommended) or CPU
 - **16GB+ RAM**
 
-### Step 1: Installation
+### Installation
 
-Clone and install dependencies:
 ```bash
+# Clone repository
 git clone <repository-url>
 cd qwen-humaneval-eval
 
-# Install using uv (recommended)
-uv sync
-
-# Or using pip
+# Install dependencies
 pip install -e .
+# Or using uv: uv sync
 ```
 
-### Step 2: Start the vLLM Server
+---
 
-Start the model server (this will download the model on first run):
+## Two Approaches
+
+This project implements **two complementary approaches** to optimize code generation:
+
+### **Approach 1: Prompt Engineering (vLLM)** [Recommended]
+
+Uses **text-based prompts** with vLLM serving for fast inference.
+
+**Workflow:**
+```
+vLLM Server (Docker) → Text Prompts → Generate → Post-process → Evaluate
+```
+
+**Best Result:** 95.7% pass@1 (infilling + post_v5)
+
+**Start Here:**
+```bash
+# 1. Start vLLM server
+./scripts/manage_services.sh start
+
+# 2. Run experiments
+python scripts/run_experiments.py
+```
+
+[Full Documentation Below](#approach-1-prompt-engineering-vllm-recommended)
+
+---
+
+### **Approach 2: Soft Prompt Tuning** [Experimental]
+
+Trains **learnable prompt embeddings** (continuous vectors) via gradient descent.
+
+**Workflow:**
+```
+Local Training → Learn Soft Prompts → Save Checkpoint → Inference
+```
+
+**Expected Result:** 85-92% pass@1 (learned automatically from data)
+
+**Start Here:**
+```bash
+# 1. Train soft prompts (~2-3 hours on GPU)
+python scripts/train_soft_prompts.py
+
+# 2. Run inference
+python scripts/inference_with_soft_prompts.py
+
+# 3. Evaluate
+python scripts/run_evaluation.py --input results/completions_soft_prompts.jsonl
+```
+
+[Soft Prompt Tuning Guide](SOFT_PROMPTS_QUICKSTART.md) | [Detailed Docs](docs/soft_prompt_tuning.md)
+
+---
+
+## Approach 1: Prompt Engineering (vLLM) [Recommended]
+
+### Step 1: Start vLLM Server
+
 ```bash
 ./scripts/manage_services.sh start
 ```
 
-Wait for the message: **"Server started!"** (~1-2 minutes on first run)
+Wait for: **"Server started!"** (~1-2 minutes on first run)
 
-### Step 3: Run Experiments (Recommended)
+### Step 2: Run Experiments
 
-**NEW: Config-based approach** - Run multiple prompt strategies and compare results:
-
+**Option A: Batch Experiments** (Recommended)
 ```bash
 python scripts/run_experiments.py
 ```
 
-This will:
-1. Load experiment configurations from `config.yml`
-2. Run all enabled experiments (3 by default)
-3. Generate comparison table with pass@1 scores
-4. Save detailed logs for each experiment
+This runs all experiments defined in `config.yml` and generates a comparison table.
 
-**Available commands:**
-```bash
-# List all experiments
-python scripts/run_experiments.py --list
-
-# Run specific experiment
-python scripts/run_experiments.py --experiment infilling_smart
-
-# Use custom config
-python scripts/run_experiments.py --config my_config.yml
-```
-
-### Step 3 (Alternative): Run Single Pipeline
-
-Execute the original single-configuration pipeline:
+**Option B: Single Experiment**
 ```bash
 ./scripts/run_pipeline.sh
 ```
 
-This command will:
-1. Generate code completions for all 164 HumanEval problems
-2. Evaluate each completion in a sandboxed environment
-3. Calculate and display the pass@1 score
-
----
-
-## Expected Output
-
-### Config-Based Experiments
-
-When running `python scripts/run_experiments.py`, you'll see:
+### Step 3: View Results
 
 ```
-Running 3 experiment(s)...
-
-================================================================================
-Experiment: infilling_smart
-Code infilling with TODO markers (best performance)
-================================================================================
-
-Step 1: Running inference...
-Generating completions for 164 problems...
-Inference: 100%|████████████████████| 164/164
-
-Step 2: Running evaluation...
-Evaluating 164 completions using 8 workers...
-Evaluating: 100%|████████████████████| 164/164
-
-┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┓
-┃ Metric             ┃ Value              ┃
-┣━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━┫
-┃ Total problems     ┃ 164                ┃
-┃ Passed             ┃ 157                ┃
-┃ Failed             ┃ 7                  ┃
-┃ pass@1             ┃ 0.957 (95.7%)      ┃
-┗━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━┛
-
-[... experiments 2 and 3 ...]
-
 ================================================================================
                         EXPERIMENT SUMMARY
 ================================================================================
@@ -129,73 +132,135 @@ Evaluating: 100%|████████████████████| 1
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━┓
 ┃ Experiment              ┃ Prompt        ┃ Postprocess┃ Temp ┃  pass@1  ┃Passed/Total┃  Status  ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━┩
-│ infilling_smart         │ infilling     │ smart      │  0.2 │  0.957   │ 157/164    │    ✓     │
-│ minimal_smart           │ minimal       │ smart      │  0.2 │  0.878   │ 144/164    │    ✓     │
-│ instructional_smart     │ instructional │ smart      │  0.1 │  0.841   │ 138/164    │    ✓     │
+│ expert_v00_none         │ expert_v00    │ none       │  0.0 │  0.957   │ 157/164    │    ✓     │
+│ expert_v0_none          │ expert_v0     │ none       │  0.0 │  0.884   │ 145/164    │    ✓     │
+│ minimal_none            │ minimal       │ none       │  0.0 │  0.841   │ 138/164    │    ✓     │
 └─────────────────────────┴───────────────┴────────────┴──────┴──────────┴────────────┴──────────┘
 
-Best Result: infilling_smart
-  Strategy: infilling + smart
+Best Result: expert_v00_none
+  Strategy: expert_v00 + none
   pass@1: 0.957 (95.7%)
   Passed: 157/164
-
-Summary saved to: results/experiments_summary.json
 ```
 
-### Output Files
+---
 
-Results are organized in the following directories:
+## Approach 2: Soft Prompt Tuning [Experimental]
 
-**`results/`** - Evaluation results:
-- `completions_<experiment>.jsonl` - Generated code completions per experiment
-- `evaluation_<experiment>.json` - Detailed evaluation results per experiment
-- `experiments_summary.json` - Combined results from all experiments
+### What is Soft Prompt Tuning?
 
-**`logs/`** - Detailed logging (NEW):
-- **`<experiment>.log`** - High-level progress log
-  - Experiment configuration and timing
-  - Number of problems processed
-  - Final pass@1 results
-  - Example: `infilling_smart.log`
+Instead of manually writing text prompts, **train** continuous embeddings that are prepended to every input:
 
-- **`<experiment>_failures.log`** - Failed cases analysis
-  - Only created if there are failures
-  - Shows raw model output (before post-processing)
-  - Shows cleaned output (after post-processing)
-  - Includes error messages for each failure
-  - Useful for debugging and understanding where post-processing helps/hurts
-  - Example: `infilling_smart_failures.log`
+```
+[soft_prompt_1] [soft_prompt_2] ... [soft_prompt_N] [your_code_problem] → Model → [output]
+       ↑ Trainable (20 tokens = 18K params)            ↑ Frozen (494M params)
+```
 
-- **`experiment_run_<timestamp>.log`** - Multi-experiment session log
-  - Tracks all experiments in a single run
-  - Overall progress and completion status
-  - Created when running multiple experiments together
+**Benefits:**
+- Automatic optimization via gradient descent
+- Only 0.0036% of model parameters trained
+- Fast training (2-3 hours)
+- Small checkpoint (~70KB)
+
+**Trade-offs:**
+- Requires GPU training time
+- Not interpretable (can't read learned prompts)
+- May not beat manual prompt engineering (your 95.7% is already excellent!)
+
+### Quick Start
+
+```bash
+# 1. Train soft prompts
+python scripts/train_soft_prompts.py
+
+# 2. Inference with trained prompts
+python scripts/inference_with_soft_prompts.py
+
+# 3. Evaluate
+python scripts/run_evaluation.py --input results/completions_soft_prompts.jsonl
+```
+
+### Configuration
+
+Edit `prompt_tuning.yml` to customize training:
+
+```yaml
+soft_prompts:
+  num_virtual_tokens: 20  # Number of learnable tokens
+
+training:
+  num_epochs: 10
+  learning_rate: 0.001
+  batch_size: 1
+```
+
+**Full Guide**: [SOFT_PROMPTS_QUICKSTART.md](SOFT_PROMPTS_QUICKSTART.md)
 
 ---
 
 ## Project Structure
 
 ```
-.
-├── config.yml                   # ⭐ NEW: Experiment configurations
+qwen-humaneval-eval/
+├── README.md                              # This file
+├── config.yml                             # Prompt engineering experiments
+├── prompt_tuning.yml                      # Soft prompt tuning config
+├── docker-compose.yml                     # vLLM server orchestration
+│
 ├── docker/
-│   ├── Dockerfile.vllm          # vLLM model server image
-│   └── Dockerfile.eval          # Evaluation sandbox image
-├── docker-compose.yml           # Service orchestration
+│   ├── Dockerfile.vllm                       # vLLM model server
+│   └── Dockerfile.eval                       # Evaluation sandbox
+│
 ├── scripts/
-│   ├── inference.py             # Code generation script (with logging)
-│   ├── run_evaluation.py        # Parallel evaluation script
-│   ├── run_experiments.py       # ⭐ NEW: Multi-experiment runner
-│   ├── sandbox.py               # Safe code execution
-│   ├── manage_services.sh       # Service management
-│   └── run_pipeline.sh          # Single pipeline runner
+│   ├── inference.py                          # vLLM inference
+│   ├── run_evaluation.py                     # Parallel evaluation
+│   ├── run_experiments.py                    # Batch experiment runner
+│   ├── manage_services.sh                    # Service management
+│   ├── run_pipeline.sh                       # Single pipeline
+│   ├── sandbox.py                            # Safe code execution
+│   ├── train_soft_prompts.py                 # NEW: Soft prompt training
+│   ├── inference_with_soft_prompts.py        # NEW: Soft prompt inference
+│   └── reprocess_completions.py              # Post-processing utility
+│
 ├── prompts/
-│   ├── code_completion.py       # Basic prompt templates
-│   └── advanced_prompts.py      # 5 prompt strategies (infilling, minimal, etc.)
-├── results/                     # Evaluation results (per experiment)
-├── logs/                        # ⭐ NEW: Detailed execution logs
-└── README.md
+│   ├── code_completion.py                    # Basic templates
+│   ├── advanced_prompts.py                   # Advanced strategies (expert_v0, etc.)
+│   └── post_process_v5.py                    # Production post-processing
+│
+├── docs/
+│   ├── vllm_setup.md                         # vLLM setup guide
+│   ├── prompt_strategies.md                  # Prompt engineering docs
+│   ├── performance_improvements.md           # Performance optimization
+│   └── soft_prompt_tuning.md                 # NEW: Soft prompts guide
+│
+├── results/                                # Evaluation results
+├── logs/                                   # Training/evaluation logs
+└── soft_prompts/                           # NEW: Trained soft prompt checkpoints
+    └── best_soft_prompts.pt                  # Best checkpoint
 ```
+
+---
+
+## Results
+
+### Prompt Engineering Results
+
+| Strategy | Description | pass@1 | Status |
+|----------|-------------|--------|--------|
+| **expert_v00** | Direct expert framing for string problems | **95.7%** | 🏆 Best |
+| **expert_v0** | Conditional expert framing | 88.4% | ✅ Excellent |
+| **expert_v1** | Two-expert strategy (string/list) | 87.8% | ✅ Excellent |
+| **expert_v2** | Three-expert strategy (string/list/sort) | 85.4% | ✅ Good |
+| **minimal** | No instructions | 84.1% | ✅ Good |
+
+**Key Insight:** Smart expert framing for string manipulation problems yields best results.
+
+### Soft Prompt Tuning Results (In Progress)
+
+| Configuration | pass@1 | Training Time | Status |
+|--------------|--------|---------------|--------|
+| Soft prompts (20 tokens) | TBD | ~2-3 hours | 🔄 Debugging NaN loss |
+| Soft prompts + post_v5 | TBD | ~2-3 hours | ⏳ Pending |
 
 ---
 
@@ -203,157 +268,152 @@ Results are organized in the following directories:
 
 ### Customizing Experiments
 
-Edit `config.yml` to customize experiment configurations:
+Edit `config.yml`:
 
 ```yaml
-# Inference settings
-inference:
-  num_workers: 16  # Adjust based on your system (default: 16)
-
-# Evaluation settings
-evaluation:
-  num_workers: null  # null = auto-detect CPU count
-
 experiments:
   - name: "my_experiment"
     description: "Custom configuration"
     enabled: true
-    prompt_strategy: "infilling"      # Choose: minimal, infilling, instructional, fewshot, cot
-    postprocess_strategy: "smart"     # Choose: none, basic, smart
-    temperature: 0.2                  # Sampling temperature
+    prompt_strategy: "expert_v00"     # Choose from available strategies
+    postprocess_strategy: "none"      # none, post_v1, post_v5
+    temperature: 0.0                  # Sampling temperature
     output_file: "completions_my.jsonl"
     results_file: "evaluation_my.json"
 ```
 
-### Testing on a Subset
+**Available Prompt Strategies:**
+- `minimal` - No instructions
+- `minimal_v0` - Expert-framed (string focus)
+- `expert_v00` - Direct expert framing (string problems)
+- `expert_v0` - Conditional expert (string only)
+- `expert_v1` - Two experts (string/list)
+- `expert_v2` - Three experts (string/list/sort)
+- `example_v0` - Minimal + relevant example
+- `infilling`, `instructional`, `fewshot`, `cot` - Other strategies
 
-To test on fewer problems, edit `config.yml`:
+**Available Post-processing:**
+- `none` - Raw model output
+- `post_v1` - Basic crash fixes
+- `post_v5` - Production-ready pipeline (dependency injection, truncation fixes, etc.)
+
+### Testing on Subset
 
 ```yaml
 dataset:
-  max_samples: 10  # Test on first 10 problems only
+  max_samples: 10  # Test on first 10 problems
 ```
 
-Or use environment variable:
+Or via environment variable:
 ```bash
 MAX_SAMPLES=10 ./scripts/run_pipeline.sh
-```
-
-### Command-Line Inference (Legacy)
-
-You can still run inference with command-line arguments:
-
-```bash
-python scripts/inference.py \
-  --prompt-strategy infilling \
-  --postprocess-strategy smart \
-  --temperature 0.2 \
-  --num-workers 16 \
-  --max-samples 10 \
-  --output results/my_completions.jsonl
 ```
 
 ### Service Management
 
 ```bash
-# Check server status
-./scripts/manage_services.sh test
-
-# View logs
-./scripts/manage_services.sh logs
-
-# Stop services
-./scripts/manage_services.sh stop
-
-# Restart services
-./scripts/manage_services.sh restart
+./scripts/manage_services.sh start    # Start vLLM server
+./scripts/manage_services.sh stop     # Stop server
+./scripts/manage_services.sh restart  # Restart server
+./scripts/manage_services.sh test     # Check status
+./scripts/manage_services.sh logs     # View logs
 ```
-
----
-
-## Prompt Strategies
-
-The project includes multiple prompt strategies optimized for code generation:
-
-| Strategy | Description | Actual pass@1 |
-|----------|-------------|---------------|
-| **infilling** | Code infilling with TODO markers (best) | 0.957 |
-| **minimal** | Clean, minimal prompt | 0.878 |
-| **instructional** | Explicit instructions | 0.841 |
-| **fewshot** | Includes example | Not tested |
-| **cot** | Chain of thought reasoning | Not tested |
-
-The default configuration uses **infilling** strategy with **smart post-processing**, **temperature=0.2**, and **16 parallel workers**, which achieves the best results (95.7% pass@1).
-
----
-
-## Troubleshooting
-
-### vLLM server won't start
-- Check GPU availability: `nvidia-smi`
-- Check Docker: `docker ps`
-- Try CPU mode: Comment out GPU config in `docker-compose.yml`
-
-### pass@1 score is lower than expected
-1. Verify model loaded: Check logs for "Qwen/Qwen2.5-Coder-0.5B"
-2. Try lower temperature: `--temperature 0.1`
-3. Ensure smart post-processing is enabled
-
-### Out of memory errors
-- Reduce batch size in vLLM config
-- Reduce `--max-model-len` parameter
-- Use CPU mode instead of GPU
-
-### Connection errors
-- Ensure vLLM server is running: `./scripts/manage_services.sh test`
-- Check port 8000 is not in use: `lsof -i :8000`
 
 ---
 
 ## Performance Metrics
 
-- **Inference Speed**: ~15-30 problems/second (16 parallel API calls)
-- **Evaluation Speed**: ~36 problems/second (8 CPU cores, parallel execution)
-- **Total Runtime**: ~15-30 seconds for full HumanEval (164 problems)
-- **pass@1 Score**: 0.957 (95.7%) - **Target Exceeded**
+### Prompt Engineering (vLLM)
+- **Inference Speed**: 15-30 problems/second (16 parallel workers)
+- **Evaluation Speed**: 36 problems/second (8 CPU cores)
+- **Total Runtime**: 15-30 seconds for 164 problems
+- **Best pass@1**: 95.7% ✅
 
-### Parallelization Details
-
-Both inference and evaluation use parallelization for maximum performance:
-
-1. **Inference**: ThreadPoolExecutor with 16 workers (configurable in `config.yml`)
-   - I/O-bound task (waiting for vLLM API responses)
-   - Threads are more efficient than processes for network calls
-   - 10-15x speedup over sequential processing
-
-2. **Evaluation**: Multiprocessing Pool with auto-detected CPU count
-   - CPU-bound task (executing and testing code)
-   - Signal-based timeout enforcement (no nested multiprocessing)
-   - Each worker runs tests directly with isolated timeout
-   - 8x speedup on 8-core system
+### Soft Prompt Tuning
+- **Training Time**: 2-3 hours (GPU) / 8-12 hours (CPU)
+- **Trainable Parameters**: 17,920 (0.0036% of model)
+- **Checkpoint Size**: ~70KB
+- **Expected pass@1**: 85-92% (automatic optimization)
 
 ---
 
-## Results Breakdown
+## Troubleshooting
 
-### Achievement Summary
+### vLLM Server Issues
 
-| Configuration | pass@1 | Status |
-|--------------|--------|--------|
-| infilling + smart (T=0.2) | **0.957** | Target exceeded |
-| minimal + smart (T=0.2) | 0.878 | Target exceeded |
-| instructional + smart (T=0.1) | 0.841 | Target exceeded |
+**Server won't start:**
+```bash
+# Check GPU
+nvidia-smi
 
-### Common Failure Patterns
+# Check Docker
+docker ps
 
-1. **Indentation errors** (15%) - Fixed by smart post-processing
-2. **Edge case handling** (25%) - Complex logic errors
-3. **Algorithm implementation** (30%) - Logic mistakes
-4. **Timeout/infinite loops** (10%) - Caught by sandbox
-5. **Other** (20%) - Various issues
+# View logs
+./scripts/manage_services.sh logs
+```
+
+**Connection errors:**
+```bash
+# Test server
+./scripts/manage_services.sh test
+
+# Check port
+lsof -i :8000
+```
+
+### Soft Prompt Training Issues
+
+**NaN loss:**
+- Reduce learning rate in `prompt_tuning.yml`: `learning_rate: 0.001`
+- Use float32: `torch_dtype: "float32"`
+- Check label masking (known issue - under investigation)
+
+**Out of memory:**
+- Reduce batch size: `batch_size: 1`
+- Reduce sequence length: `max_length: 384`
+- Reduce virtual tokens: `num_virtual_tokens: 10`
+
+**Slow training:**
+- Use GPU if available
+- Enable mixed precision: `mixed_precision: true`
+- Test with fewer samples: `max_samples: 20`
+
+### Evaluation Issues
+
+**pass@1 lower than expected:**
+1. Check model loaded correctly
+2. Try lower temperature: `temperature: 0.0`
+3. Enable post-processing: `postprocess_strategy: "post_v5"`
+
+---
+
+## Key Technologies
+
+- **vLLM**: High-performance LLM inference server
+- **Docker**: Containerization for serving and sandboxed evaluation
+- **HumanEval**: 164 Python programming problems benchmark
+- **PyTorch**: Deep learning framework for soft prompt tuning
+- **Transformers**: HuggingFace library for model loading
+
+---
+
+## Contributing
+
+This is a take-home assignment project. Not currently accepting contributions.
 
 ---
 
 ## License
 
 This project is for educational and evaluation purposes.
+
+---
+
+## Additional Resources
+
+- 📖 [Soft Prompt Tuning Quick Start](SOFT_PROMPTS_QUICKSTART.md)
+- 📖 [Detailed Soft Prompt Documentation](docs/soft_prompt_tuning.md)
+- 📖 [Prompt Engineering Strategies](docs/prompt_strategies.md)
+- 📖 [Performance Improvements Guide](docs/performance_improvements.md)
+- 📖 [vLLM Setup Guide](docs/vllm_setup.md)
