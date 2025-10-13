@@ -90,7 +90,9 @@ class SoftPromptTuning(nn.Module):
         # Create soft prompt embeddings
         if init_from_vocab and tokenizer is not None:
             # Initialize from random vocabulary embeddings
-            init_ids = torch.randint(0, len(tokenizer), (num_virtual_tokens,))
+            # Get the device of the model embeddings
+            embedding_device = base_model.get_input_embeddings().weight.device
+            init_ids = torch.randint(0, len(tokenizer), (num_virtual_tokens,)).to(embedding_device)
             with torch.no_grad():
                 init_embeds = base_model.get_input_embeddings()(init_ids)
             self.soft_prompts = nn.Parameter(init_embeds.clone())
