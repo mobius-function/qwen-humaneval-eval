@@ -15,8 +15,8 @@ soft_prompts:
 
 # Training Configuration
 training:
-  batch_size: 4                    # Per-device batch size
-  gradient_accumulation_steps: 4   # Effective batch size = 4 * 4 = 16
+  batch_size: 1                    # Per-device batch size (reduced for GPU memory)
+  gradient_accumulation_steps: 16  # Effective batch size = 1 * 16 = 16
   num_epochs: 10                   # Number of training epochs
   learning_rate: 0.01              # Higher LR for prompt tuning (0.01 - 0.1)
   warmup_steps: 100                # LR warmup steps
@@ -27,7 +27,7 @@ training:
 dataset:
   train_val_split: 0.8             # 80% train, 20% validation
   max_samples: null                # Limit samples for debugging (null = use all)
-  max_length: 1024                 # Maximum sequence length
+  max_length: 512                  # Maximum sequence length (reduced for GPU memory)
   seed: 42                         # Random seed for reproducibility
 
 # Evaluation Configuration
