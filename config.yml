@@ -138,3 +138,12 @@ experiments:
     temperature: 0.2
     output_file: "completions_minimal_solution.jsonl"
     results_file: "evaluation_minimal_solution.json"
+
+  - name: "helper_none"
+    description: "Helper prompt with code patterns, no post-processing"
+    enabled: true
+    prompt_strategy: "helper"
+    postprocess_strategy: "none"
+    temperature: 0.2
+    output_file: "completions_helper_none.jsonl"
+    results_file: "evaluation_helper_none.json"

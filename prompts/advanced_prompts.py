@@ -502,6 +502,32 @@ def create_optimized_v3_prompt(problem: str) -> str:
     return prompt
 
 
+def create_helper_prompt(problem: str) -> str:
+    """
+    Helper prompt with common code patterns.
+
+    Provides useful helper code patterns that solve common algorithmic tasks.
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Prompt with helper patterns
+    """
+    prompt = f"""Implement this function completely:
+
+{problem}
+
+Use these helpers if needed:
+is_prime = lambda n: n>1 and all(n%i for i in range(2,int(n**0.5)+1))
+is_palindrome = lambda s: s==s[::-1]
+check_all_pairs: for i in range(len(a)): for j in range(i+1,len(a))
+
+Solution:
+"""
+    return prompt
+
+
 # Mapping of strategy names to prompt functions
 PROMPT_STRATEGIES = {
     'minimal': create_minimal_prompt,
@@ -514,6 +540,7 @@ PROMPT_STRATEGIES = {
     'optimized_v1': create_optimized_v1_prompt,
     'optimized_v2': create_optimized_v2_prompt,
     'optimized_v3': create_optimized_v3_prompt,
+    'helper': create_helper_prompt,
 }
 
 def solution_post_process(completion: str, prompt: str, entry_point: str = None) -> str:
