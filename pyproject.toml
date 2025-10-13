@@ -20,6 +20,8 @@ dependencies = [
     "transformers>=4.35.0",
     "accelerate>=0.25.0",
     "tqdm>=4.65.0",
+    "numpy>=2.2.6",
+    "scikit-learn>=1.7.2",
 ]
 
 [tool.setuptools.packages.find]

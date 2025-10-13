@@ -51,3 +51,7 @@ temp/
 
 # UV lock file (optional - uncomment if you want to gitignore it)
 # uv.lock
+
+# Soft prompt checkpoints (keep best only for reporting)
+soft_prompts/*.pt
+!soft_prompts/best_soft_prompts.pt

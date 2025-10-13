@@ -5,7 +5,7 @@
 model:
   name: "Qwen/Qwen2.5-Coder-0.5B"
   trust_remote_code: true
-  torch_dtype: "float16"  # Use float16 for GPU, float32 for CPU
+  torch_dtype: "float32"  # Use float32 for numerical stability (was float16)
 
 # Soft Prompt Configuration
 soft_prompts:
@@ -17,10 +17,10 @@ soft_prompts:
 training:
   batch_size: 1                    # Per-device batch size (reduced for GPU memory)
   gradient_accumulation_steps: 16  # Effective batch size = 1 * 16 = 16
-  num_epochs: 10                   # Number of training epochs
-  learning_rate: 0.01              # Higher LR for prompt tuning (0.01 - 0.1)
-  warmup_steps: 100                # LR warmup steps
-  max_grad_norm: 1.0               # Gradient clipping
+  num_epochs: 20                   # Number of training epochs (increased for better convergence)
+  learning_rate: 0.001             # Lowered to prevent NaN loss (was 0.01)
+  warmup_steps: 10                 # LR warmup steps (reduced - was 100, which was ~12 epochs!)
+  max_grad_norm: 0.5               # More aggressive gradient clipping to prevent NaN
   weight_decay: 0.01               # Weight decay for regularization
 
 # Dataset Configuration
@@ -34,7 +34,7 @@ dataset:
 evaluation:
   eval_every_n_epochs: 1           # Evaluate every N epochs
   save_best_only: false            # Save all checkpoints or only best
-  early_stopping_patience: 3       # Stop if no improvement for N epochs
+  early_stopping_patience: 6       # Stop if no improvement for N epochs
 
 # Output Configuration
 output:

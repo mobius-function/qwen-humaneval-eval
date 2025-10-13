@@ -125,11 +125,9 @@ def generate_completions(
             )
 
             # Decode
-            # Remove soft prompt tokens and input prompt tokens
+            # Remove input prompt tokens (soft prompts are not in the output)
             prompt_len = inputs["input_ids"].shape[1]
-            generated_ids = outputs[0][
-                prompt_len + model.num_virtual_tokens :
-            ]  # Skip soft prompts
+            generated_ids = outputs[0][prompt_len:]  # Skip only the input prompt
             completion = tokenizer.decode(generated_ids, skip_special_tokens=True)
 
             completions.append(
@@ -202,7 +200,7 @@ def main():
     base_model = AutoModelForCausalLM.from_pretrained(
         model_name,
         trust_remote_code=True,
-        torch_dtype=torch.float16 if device.type == "cuda" else torch.float32,
+        torch_dtype=torch.float32,  # Must match training dtype
         device_map=device,
     )
 

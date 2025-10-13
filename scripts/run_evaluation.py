@@ -66,7 +66,7 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
             "passed": False,
             "error": "No test found for task",
             "completion": completion.get("completion"),
-            "raw_completion": completion.get("raw_completion"),
+            "raw_completion": completion.get("raw_completion", completion.get("completion")),
         }
 
     test_info = tests[task_id]
@@ -97,7 +97,7 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
                 "passed": True,
                 "error": None,
                 "completion": completion.get("completion"),
-                "raw_completion": completion.get("raw_completion"),
+                "raw_completion": completion.get("raw_completion", completion.get("completion")),
             }
         finally:
             # Always cancel the alarm
@@ -108,7 +108,7 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
             "task_id": task_id,
             "passed": False,
             "error": f"Timeout after {timeout} seconds",
-            "raw_completion": completion.get("raw_completion"),
+            "raw_completion": completion.get("raw_completion", completion.get("completion")),
             "completion": completion.get("completion"),
         }
     except Exception as e:
@@ -116,7 +116,7 @@ def evaluate_single_completion(args: Tuple[Dict, Dict[str, Dict], int]) -> Dict:
             "task_id": task_id,
             "passed": False,
             "error": str(e),
-            "raw_completion": completion.get("raw_completion"),
+            "raw_completion": completion.get("raw_completion", completion.get("completion")),
             "completion": completion.get("completion"),
         }
 
