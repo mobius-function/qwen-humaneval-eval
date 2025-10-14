@@ -4,13 +4,12 @@
 # vLLM Server Settings
 vllm:
   api_url: "http://localhost:8000/v1"
-  max_tokens: 512
+  max_tokens: 1024  # Increased from 512 to allow longer implementations
   top_p: 1.0
   stop_sequences:
     - "\n\n"
     - "\ndef "
     - "\nclass "
-    - "\nif "
 
 # Inference Settings
 inference:
@@ -40,7 +39,7 @@ experiments:
 
   - name: "minimal_none"
     description: "Minimal prompt (no post-processing)"
-    enabled: true
+    enabled: false
     prompt_strategy: "minimal"
     postprocess_strategy: "none"
     temperature: 0.0
@@ -57,13 +56,40 @@ experiments:
     results_file: "evaluation_instructional_none.json"
 
   - name: "fewshot_none"
-    description: "Few-shot prompt with example"
+    description: "Few-shot prompt with 14 examples - DISABLED due to token length"
     enabled: false
     prompt_strategy: "fewshot"
     postprocess_strategy: "none"
-    temperature: 0.2
+    temperature: 0.0
     output_file: "completions_fewshot_none.jsonl"
     results_file: "evaluation_fewshot_none.json"
+
+  - name: "fewshot_v1_none"
+    description: "Few-shot v1 (6 curated examples, no post-processing)"
+    enabled: false
+    prompt_strategy: "fewshot_v1"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_fewshot_v1_none.jsonl"
+    results_file: "evaluation_fewshot_v1_none.json"
+
+  - name: "fewshot_v2_none"
+    description: "Few-shot v2 (6 examples + chain of thought, no post-processing)"
+    enabled: true
+    prompt_strategy: "fewshot_v2"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_fewshot_v2_none.jsonl"
+    results_file: "evaluation_fewshot_v2_none.json"
+
+  - name: "fewshot_v3_none"
+    description: "Few-shot v3 (6 examples + CoT + self-critique, no post-processing)"
+    enabled: false
+    prompt_strategy: "fewshot_v3"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_fewshot_v3_none.jsonl"
+    results_file: "evaluation_fewshot_v3_none.json"
 
   - name: "cot_none"
     description: "Chain of thought reasoning prompt"
@@ -148,7 +174,7 @@ experiments:
 
   - name: "expert_v00_none"
     description: "Smart prompt: direct 'expert in Python string manipulation' for string problems"
-    enabled: true
+    enabled: false
     prompt_strategy: "expert_v00"
     postprocess_strategy: "none"
     temperature: 0.0
@@ -157,7 +183,7 @@ experiments:
 
   - name: "expert_v0_none"
     description: "Smart prompt: expert framing only for detected string problems, minimal otherwise"
-    enabled: true
+    enabled: false
     prompt_strategy: "expert_v0"
     postprocess_strategy: "none"
     temperature: 0.0
@@ -166,7 +192,7 @@ experiments:
 
   - name: "expert_v1_none"
     description: "Smart prompt: string expert OR list expert OR minimal (two experts)"
-    enabled: true
+    enabled: false
     prompt_strategy: "expert_v1"
     postprocess_strategy: "none"
     temperature: 0.0
@@ -175,7 +201,7 @@ experiments:
 
   - name: "expert_v2_none"
     description: "Smart prompt: string OR list OR sorting expert OR minimal (three experts)"
-    enabled: true
+    enabled: false
     prompt_strategy: "expert_v2"
     postprocess_strategy: "none"
     temperature: 0.0
@@ -184,7 +210,7 @@ experiments:
 
   - name: "example_v0_none"
     description: "Smart prompt: minimal + one relevant example (string/list/sorting)"
-    enabled: true
+    enabled: false
     prompt_strategy: "example_v0"
     postprocess_strategy: "none"
     temperature: 0.0
@@ -262,3 +288,165 @@ experiments:
     temperature: 0.0
     output_file: "completions_minimal_post_v5.jsonl"
     results_file: "evaluation_minimal_post_v5.json"
+
+  - name: "fewshot_post_v5"
+    description: "Few-shot prompt (14 examples) with post_v5 post-processing - DISABLED due to token length"
+    enabled: false
+    prompt_strategy: "fewshot"
+    postprocess_strategy: "post_v5"
+    temperature: 0.0
+    output_file: "completions_fewshot_post_v5.jsonl"
+    results_file: "evaluation_fewshot_post_v5.json"
+
+  - name: "fewshot_v1_post_v5"
+    description: "Few-shot v1 (6 curated examples) with post_v5 post-processing"
+    enabled: false
+    prompt_strategy: "fewshot_v1"
+    postprocess_strategy: "post_v5"
+    temperature: 0.0
+    output_file: "completions_fewshot_v1_post_v5.jsonl"
+    results_file: "evaluation_fewshot_v1_post_v5.json"
+
+  - name: "fewshot_v2_post_v5"
+    description: "Few-shot v2 (6 examples + CoT) with post_v5 post-processing"
+    enabled: false
+    prompt_strategy: "fewshot_v2"
+    postprocess_strategy: "post_v5"
+    temperature: 0.0
+    output_file: "completions_fewshot_v2_post_v5.jsonl"
+    results_file: "evaluation_fewshot_v2_post_v5.json"
+
+  - name: "json_v1_none"
+    description: "Few-shot with JSON-structured reasoning (no post-processing)"
+    enabled: false
+    prompt_strategy: "json_v1"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_json_v1_none.jsonl"
+    results_file: "evaluation_json_v1_none.json"
+
+  - name: "json_v1_post_v5"
+    description: "Few-shot with JSON-structured reasoning + post_v5 post-processing"
+    enabled: false
+    prompt_strategy: "json_v1"
+    postprocess_strategy: "post_v5"
+    temperature: 0.0
+    output_file: "completions_json_v1_post_v5.jsonl"
+    results_file: "evaluation_json_v1_post_v5.json"
+
+  - name: "fewshot_v3_post_v5"
+    description: "Few-shot v3 (6 examples + CoT + self-critique) with post_v5 post-processing"
+    enabled: false
+    prompt_strategy: "fewshot_v3"
+    postprocess_strategy: "post_v5"
+    temperature: 0.0
+    output_file: "completions_fewshot_v3_post_v5.jsonl"
+    results_file: "evaluation_fewshot_v3_post_v5.json"
+
+  - name: "fewshot_v4_none"
+    description: "Few-shot v4 (9 examples + anti-placeholder warnings + edge cases, no post-processing) - Based on v2 failure analysis"
+    enabled: false
+    prompt_strategy: "fewshot_v4"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_fewshot_v4_none.jsonl"
+    results_file: "evaluation_fewshot_v4_none.json"
+
+  - name: "fewshot_v4_post_v5"
+    description: "Few-shot v4 (9 examples + anti-placeholder + edge cases) with post_v5 - RECOMMENDED for testing v2 improvements"
+    enabled: false
+    prompt_strategy: "fewshot_v4"
+    postprocess_strategy: "post_v5"
+    temperature: 0.0
+    output_file: "completions_fewshot_v4_post_v5.jsonl"
+    results_file: "evaluation_fewshot_v4_post_v5.json"
+
+  - name: "fewshot_v5_none"
+    description: "Few-shot v5 (9 targeted examples: prime, sort, search, comparison, data structures) - Addresses 100% failure classes"
+    enabled: false
+    prompt_strategy: "fewshot_v5"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_fewshot_v5_none.jsonl"
+    results_file: "evaluation_fewshot_v5_none.json"
+
+  - name: "fewshot_v6_none"
+    description: "Few-shot v6 - Pattern-based teaching (7 logic patterns) instead of examples"
+    enabled: false
+    prompt_strategy: "fewshot_v6"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_fewshot_v6_none.jsonl"
+    results_file: "evaluation_fewshot_v6_none.json"
+
+  - name: "fewshot_v1_post_v7"
+    description: "Few-shot v1 (6 examples) + post_v7 logic error fixes (hardcoded lists, delimiters, averages, rotations)"
+    enabled: false
+    prompt_strategy: "fewshot_v1"
+    postprocess_strategy: "post_v7"
+    temperature: 0.0
+    output_file: "completions_fewshot_v1_post_v7.jsonl"
+    results_file: "evaluation_fewshot_v1_post_v7.json"
+
+  - name: "fewshot_v2_post_v7"
+    description: "Few-shot v2 (6 examples + CoT) + post_v7 logic error fixes (hardcoded lists, delimiters, averages, rotations)"
+    enabled: false
+    prompt_strategy: "fewshot_v2"
+    postprocess_strategy: "post_v7"
+    temperature: 0.0
+    output_file: "completions_fewshot_v2_post_v7.jsonl"
+    results_file: "evaluation_fewshot_v2_post_v7.json"
+
+  - name: "fewshot_v2_devise_none"
+    description: "Few-shot v2_devise (6 examples + explicit 'devise algorithm' instruction, no post-processing)"
+    enabled: true
+    prompt_strategy: "fewshot_v2_devise"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_fewshot_v2_devise_none.jsonl"
+    results_file: "evaluation_fewshot_v2_devise_none.json"
+
+  - name: "fewshot_v2_devise_post_v7"
+    description: "Few-shot v2_devise (6 examples + 'devise algorithm') + post_v7 logic error fixes"
+    enabled: true
+    prompt_strategy: "fewshot_v2_devise"
+    postprocess_strategy: "post_v7"
+    temperature: 0.0
+    output_file: "completions_fewshot_v2_devise_post_v7.jsonl"
+    results_file: "evaluation_fewshot_v2_devise_post_v7.json"
+
+  - name: "def_v1_none"
+    description: "Definitions only (10 programming concepts + 'devise algorithm', no post-processing)"
+    enabled: true
+    prompt_strategy: "fewshot_v2_devise_def_v1"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_def_v1_none.jsonl"
+    results_file: "evaluation_def_v1_none.json"
+
+  - name: "def_v1_post_v7"
+    description: "Definitions only (10 programming concepts + 'devise algorithm') + post_v7 logic error fixes"
+    enabled: true
+    prompt_strategy: "fewshot_v2_devise_def_v1"
+    postprocess_strategy: "post_v7"
+    temperature: 0.0
+    output_file: "completions_def_v1_post_v7.jsonl"
+    results_file: "evaluation_def_v1_post_v7.json"
+
+  - name: "def_v2_none"
+    description: "Optimized hybrid (5 definitions with code snippets + 4 examples + 'devise algorithm', no post-processing)"
+    enabled: true
+    prompt_strategy: "fewshot_v2_devise_def_v2"
+    postprocess_strategy: "none"
+    temperature: 0.0
+    output_file: "completions_def_v2_none.jsonl"
+    results_file: "evaluation_def_v2_none.json"
+
+  - name: "def_v2_post_v7"
+    description: "Optimized hybrid (5 definitions with code + 4 examples + 'devise algorithm') + post_v7 logic error fixes"
+    enabled: true
+    prompt_strategy: "fewshot_v2_devise_def_v2"
+    postprocess_strategy: "post_v7"
+    temperature: 0.0
+    output_file: "completions_def_v2_post_v7.jsonl"
+    results_file: "evaluation_def_v2_post_v7.json"

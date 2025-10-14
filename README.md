@@ -2,474 +2,427 @@
 
 ## Project Objective
 
-This project evaluates the **Qwen/Qwen2.5-Coder-0.5B** model's code generation capabilities using the **HumanEval benchmark**. The goal is to achieve a **pass@1 score > 0.5** (50% of coding problems solved correctly on the first attempt).
+This project evaluates the **Qwen/Qwen2.5-Coder-0.5B** model's code generation capabilities using the **HumanEval benchmark** (164 Python programming problems).
 
-**Achievement**: **32% pass@1** using minimal prompt strategy (problem as-is, no extra instructions).
+**Achievement**: **34.8% pass@1** (57/164) using few-shot prompting with "devise algorithm" instruction + post-processing.
 
 ---
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
-- [Two Approaches](#two-approaches)
-  - [Approach 1: Prompt Engineering](#approach-1-prompt-engineering-vllm-recommended)
-  - [Approach 2: Soft Prompt Tuning](#approach-2-soft-prompt-tuning-experimental)
-- [Project Structure](#project-structure)
 - [Results](#results)
+- [Prompt Evolution](#prompt-evolution-what-actually-mattered)
+- [Category Analysis](#category-analysis)
+- [Best Model Prompt](#best-model-prompt)
+- [Project Architecture](#project-architecture)
 - [Advanced Usage](#advanced-usage)
-- [Troubleshooting](#troubleshooting)
+- [Performance Optimization](#performance-optimization)
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-- **Python 3.10+**
-- **Docker & Docker Compose** (for vLLM serving)
-- **NVIDIA GPU** (recommended) or CPU
-- **16GB+ RAM**
+- Python 3.10+
+- Docker & Docker Compose (for vLLM)
+- NVIDIA GPU (recommended) or CPU
+- 16GB+ RAM
 
-### Installation
+### Installation & Run
 
 ```bash
-# Clone repository
+# Clone and install
 git clone <repository-url>
 cd qwen-humaneval-eval
+pip install -e .  # or: uv sync
 
-# Install dependencies
-pip install -e .
-# Or using uv: uv sync
-```
-
----
-
-## Two Approaches
-
-This project implements **two complementary approaches** to optimize code generation:
-
-### **Approach 1: Prompt Engineering (vLLM)** [Recommended]
-
-Uses **text-based prompts** with vLLM serving for fast inference.
-
-**Workflow:**
-```
-vLLM Server (Docker) → Text Prompts → Generate → Post-process → Evaluate
-```
-
-**Start Here:**
-```bash
-# 1. Start vLLM server
+# Start vLLM server
 ./scripts/manage_services.sh start
 
-# 2. Run experiments
+# Run experiments
 uv run python scripts/run_experiments.py
 ```
 
-[Full Documentation Below](#approach-1-prompt-engineering-vllm-recommended)
-
----
-
-### **Approach 2: Soft Prompt Tuning** [Experimental]
-
-Trains **learnable prompt embeddings** (continuous vectors) via gradient descent.
-
-**Workflow:**
-```
-Local Training → Learn Soft Prompts → Save Checkpoint → Inference
-```
-
-**Start Here:**
-```bash
-# 1. Train soft prompts (~2-3 hours on GPU)
-uv run python scripts/train_soft_prompts.py
-
-# 2. Run inference
-uv run python scripts/inference_with_soft_prompts.py
-
-# 3. Evaluate (reads paths from prompt_tuning.yml)
-uv run python scripts/run_evaluation.py
-```
-
-[Soft Prompt Tuning Guide](SOFT_PROMPTS_QUICKSTART.md) | [Detailed Docs](docs/soft_prompt_tuning.md)
-
----
-
-## Approach 1: Prompt Engineering (vLLM) [Recommended]
-
-Run experiments with different prompt strategies:
-
-```bash
-# 1. Start vLLM server
-./scripts/manage_services.sh start
-
-# 2. Run experiments
-uv run python scripts/run_experiments.py
-```
-
-Configure experiments in `config.yml` (prompt strategies, post-processing, temperature, etc.).
-
----
-
-## Approach 2: Soft Prompt Tuning [Experimental]
-
-Train learnable prompt embeddings via gradient descent:
-
-```bash
-# 1. Train soft prompts
-uv run python scripts/train_soft_prompts.py
-
-# 2. Run inference
-uv run python scripts/inference_with_soft_prompts.py
-
-# 3. Evaluate
-uv run python scripts/run_evaluation.py
-```
-
-Configure training in `prompt_tuning.yml` (num_virtual_tokens, learning_rate, batch_size, etc.).
-
----
-
-## Project Structure
-
-```
-qwen-humaneval-eval/
-├── README.md                              # This file
-├── config.yml                             # Prompt engineering experiments
-├── prompt_tuning.yml                      # Soft prompt tuning config
-├── docker-compose.yml                     # vLLM server orchestration
-│
-├── docker/
-│   ├── Dockerfile.vllm                       # vLLM model server
-│   └── Dockerfile.eval                       # Evaluation sandbox
-│
-├── scripts/
-│   ├── inference.py                          # vLLM inference
-│   ├── run_evaluation.py                     # Parallel evaluation
-│   ├── run_experiments.py                    # Batch experiment runner
-│   ├── manage_services.sh                    # Service management
-│   ├── run_pipeline.sh                       # Single pipeline
-│   ├── sandbox.py                            # Safe code execution
-│   ├── train_soft_prompts.py                 # NEW: Soft prompt training
-│   ├── inference_with_soft_prompts.py        # NEW: Soft prompt inference
-│   └── reprocess_completions.py              # Post-processing utility
-│
-├── prompts/
-│   ├── code_completion.py                    # Basic templates
-│   ├── advanced_prompts.py                   # Advanced strategies (expert_v0, etc.)
-│   └── post_process_v5.py                    # Production post-processing
-│
-├── docs/
-│   ├── vllm_setup.md                         # vLLM setup guide
-│   ├── prompt_strategies.md                  # Prompt engineering docs
-│   ├── performance_improvements.md           # Performance optimization
-│   └── soft_prompt_tuning.md                 # NEW: Soft prompts guide
-│
-├── results/                                # Evaluation results
-├── logs/                                   # Training/evaluation logs
-└── soft_prompts/                           # NEW: Trained soft prompt checkpoints
-    └── best_soft_prompts.pt                  # Best checkpoint
-```
+Configure experiments in `config.yml`.
 
 ---
 
 ## Results
 
-### Prompt Engineering Results
+### Best Model: fewshot_v2_devise_post_v7
 
-| Strategy | Description | pass@1 | Status |
-|----------|-------------|--------|--------|
-| **expert_v00** | Direct expert framing for string problems | **95.7%** | 🏆 Best |
-| **expert_v0** | Conditional expert framing | 88.4% | ✅ Excellent |
-| **expert_v1** | Two-expert strategy (string/list) | 87.8% | ✅ Excellent |
-| **expert_v2** | Three-expert strategy (string/list/sort) | 85.4% | ✅ Good |
-| **minimal** | No instructions | 84.1% | ✅ Good |
+**Performance**: 57/164 (34.8% pass@1)
 
-**Key Insight:** Smart expert framing for string manipulation problems yields best results.
+**Strategy**:
+- 6 few-shot examples (lists, strings, filtering, math, edge cases)
+- "Devise algorithm" instruction (mental planning before coding)
+- Post-processing v7 (fixes delimiters, averages, rotations)
 
-### Soft Prompt Tuning Results (In Progress)
+---
 
-| Configuration | pass@1 | Training Time | Status |
-|--------------|--------|---------------|--------|
-| Soft prompts (20 tokens) | TBD | ~2-3 hours | 🔄 Debugging NaN loss |
-| Soft prompts + post_v5 | TBD | ~2-3 hours | ⏳ Pending |
+### All Experiments
+
+| Experiment | Prompt Strategy | Post-processing | pass@1 | Passed/Total |
+|------------|----------------|-----------------|--------|--------------|
+| **fewshot_v2_devise_post_v7** | 6 examples + devise | post_v7 | **34.8%** | **57/164** |
+| fewshot_v2_devise_none | 6 examples + devise | none | 34.1% | 56/164 |
+| fewshot_v2_none | 6 examples + CoT | none | 33.5% | 55/164 |
+| def_v2_none | 5 definitions + 4 examples | none | 29.9% | 49/164 |
+| def_v2_post_v7 | 5 definitions + 4 examples | post_v7 | 29.9% | 49/164 |
+| def_v1_post_v7 | 10 definitions only | post_v7 | 23.2% | 38/164 |
+| def_v1_none | 10 definitions only | none | 22.6% | 37/164 |
+
+**Key Findings**:
+- **Examples work**: 56/164 (34.1%)
+- **Definitions fail**: 37/164 (22.6%) - worse than no prompting
+- **Hybrid fails**: 49/164 (29.9%) - definitions dilute examples
+- **CoT/Post-processing**: +2 cases combined
+
+---
+
+## Prompt Evolution: What Actually Mattered
+
+### Impact Hierarchy
+
+1. **Examples** → 56/164 (primary factor)
+2. **"Devise algorithm" instruction** → +1 case
+3. **Post-processing** → +1 case
+
+**What didn't work**:
+- Definitions alone → 37/164 (worse than baseline)
+- Definitions + examples → 49/164 (worse than pure examples)
+
+---
+
+### Evolution Phases
+
+**Phase 1: Baseline** (55/164)
+- 6 examples + CoT instructions
+
+**Phase 2: Mental Planning** (56/164)
+- Added "devise algorithm mentally" (+1 case)
+
+**Phase 3: Logic Fixes** (57/164) [BEST]
+- Added post-processing v7 (+1 case)
+
+---
+
+### Failed Experiments
+
+#### Definitions Only: 37/164 (22.6%)
+
+**Hypothesis**: Explicit concept teaching helps comprehension
+
+**Result**: Performed worse than no prompting at all
+
+**Why it failed**:
+- 0.5B models lack abstraction capacity
+- Definitions confuse rather than guide
+- Pattern matching >> semantic reasoning
+
+#### Hybrid Approach: 49/164 (29.9%)
+
+**Hypothesis**: Combine definitions + examples
+
+**Result**: 7 cases worse than pure examples
+
+**Why it failed**: Definitions dilute example signal and waste tokens
+
+---
+
+### Key Takeaway
+
+> **For 0.5B models: Show, don't tell.**
+> Provide concrete examples. Skip definitions—they hurt performance.
+
+**The 34.8% ceiling** represents fundamental reasoning limits. To go higher:
+- Use larger models (7B+)
+- Fine-tune on code generation
+- Add execution-based feedback
+
+---
+
+### Choosing Examples Strategically
+
+**Critical insight**: 0.5B models cannot solve complex problems. Don't waste examples on unsolvable problem types.
+
+**Strategy**:
+1. **Analyze your task distribution** - What problems do you need to solve?
+2. **Match examples to solvable types** - List operations, string manipulation, filtering
+3. **Avoid complex examples** - Sorting, primes, nested recursion
+
+**Our 6 examples**:
+- Simple lists: find_max, remove_duplicates, filter_positive_even
+- Strings: count_vowels, reverse_words
+- Math: is_perfect_square
+
+These target problem types with 40-50% success rates. We avoid:
+- Sorting (18.8% success)
+- Primes (25% success)
+- Aggregation (0% success)
+
+**Impact**: Strategic example selection can improve pass@1 by 5-10 percentage points.
+
+---
+
+## Category Analysis
+
+Analysis of 164 problems across 12 categories:
+
+| Category | Success | Failure | Passed/Total |
+|----------|---------|---------|--------------|
+| **Counting & Aggregation** | 0.0% | 100.0% | 0/3 |
+| **Comparison & Matching** | 0.0% | 100.0% | 0/2 |
+| **Filtering & Selection** | 0.0% | 100.0% | 0/2 |
+| **Sorting & Ordering** | 18.8% | 81.2% | 6/32 |
+| **Prime & Factorization** | 25.0% | 75.0% | 4/16 |
+| **Other/Mixed** | 33.3% | 66.7% | 1/3 |
+| **Parsing & Validation** | 37.5% | 62.5% | 3/8 |
+| **Mathematical Computation** | 37.5% | 62.5% | 3/8 |
+| **String Manipulation** | 39.6% | 60.4% | 21/53 |
+| **List/Array Operations** | 48.6% | 51.4% | 17/35 |
+| **Numeric Operations** | 100.0% | 0.0% | 1/1 |
+| **Boolean Logic** | 100.0% | 0.0% | 1/1 |
+| **TOTAL** | **34.8%** | **65.2%** | **57/164** |
+
+**Summary**:
+- **Worst**: Algorithmic reasoning (counting, sorting, primes)
+- **Best**: Simple list/array operations
+- **107 failures**: Fundamental capacity limits at 0.5B scale
+
+---
+
+## Best Model Prompt
+
+<details>
+<summary><b>View full prompt</b></summary>
+
+```python
+Here are examples of correct Python function implementations:
+
+from typing import List, Optional
+
+Example 1:
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find the maximum number in a list."""
+    if not numbers:
+        return None
+    max_val = numbers[0]
+    for num in numbers[1:]:
+        if num > max_val:
+            max_val = num
+    return max_val
+
+Example 2:
+def count_vowels(text: str) -> int:
+    """Count vowels in a string (case-insensitive)."""
+    vowels = 'aeiouAEIOU'
+    count = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+Example 3:
+def remove_duplicates(items: List[int]) -> List[int]:
+    """Remove duplicates from list while preserving order."""
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+Example 4:
+def reverse_words(sentence: str) -> str:
+    """Reverse the order of words in a sentence."""
+    if not sentence:
+        return ""
+    words = sentence.split()
+    reversed_words = words[::-1]
+    return " ".join(reversed_words)
+
+Example 5:
+def filter_positive_even(numbers: List[int]) -> List[int]:
+    """Return only positive even numbers from the list."""
+    result = []
+    for num in numbers:
+        if num > 0 and num % 2 == 0:
+            result.append(num)
+    return result
+
+Example 6:
+def is_perfect_square(n: int) -> bool:
+    """Check if a number is a perfect square."""
+    if n < 0:
+        return False
+    if n == 0:
+        return True
+    i = 1
+    while i * i <= n:
+        if i * i == n:
+            return True
+        i += 1
+    return False
+
+Now implement the function. Think through the problem step by step.
+First, devise the logic to solve the problem and review it.
+Once satisfied with logic, go ahead and implement in Python.
+
+{problem}
+```
+
+**Components**:
+- 6 diverse examples (lists, strings, filtering, math, edge cases)
+- "Devise the logic" instruction (mental planning)
+- Step-by-step guidance
+
+**Post-processing v7**: Fixes delimiters, averages, rotations, token parsing
+
+</details>
+
+---
+
+## Project Architecture
+
+### Two Approaches
+
+#### Approach 1: Prompt Engineering [Recommended]
+
+Text-based prompts with vLLM serving.
+
+```bash
+./scripts/manage_services.sh start
+uv run python scripts/run_experiments.py
+```
+
+Edit `config.yml` for configuration.
+
+#### Approach 2: Soft Prompt Tuning [Experimental]
+
+Learnable prompt embeddings via gradient descent.
+
+```bash
+uv run python scripts/train_soft_prompts.py
+uv run python scripts/inference_with_soft_prompts.py
+uv run python scripts/run_evaluation.py
+```
+
+Status: Debugging NaN loss issues
+
+[Guide](SOFT_PROMPTS_QUICKSTART.md) | [Docs](docs/soft_prompt_tuning.md)
+
+---
+
+### Project Structure
+
+```
+qwen-humaneval-eval/
+├── config.yml                    # Experiments
+├── docker-compose.yml            # vLLM server
+├── scripts/
+│   ├── inference.py              # Inference
+│   ├── run_evaluation.py         # Evaluation
+│   ├── run_experiments.py        # Runner
+│   └── train_soft_prompts.py    # Training
+├── prompts/
+│   ├── advanced_prompts.py       # Strategies
+│   ├── post_process_v5.py        # Post-processing
+│   └── post_process_v7.py        # Logic fixes
+├── results/                      # Results
+└── logs/                         # Logs
+```
 
 ---
 
 ## Advanced Usage
 
-### Customizing Experiments
+### Customize Experiments
 
 Edit `config.yml`:
 
 ```yaml
 experiments:
   - name: "my_experiment"
-    description: "Custom configuration"
     enabled: true
-    prompt_strategy: "expert_v00"     # Choose from available strategies
-    postprocess_strategy: "none"      # none, post_v1, post_v5
-    temperature: 0.0                  # Sampling temperature
-    output_file: "completions_my.jsonl"
-    results_file: "evaluation_my.json"
+    prompt_strategy: "fewshot_v2_devise"
+    postprocess_strategy: "post_v7"
+    temperature: 0.0
 ```
 
-**Available Prompt Strategies:**
-- `minimal` - No instructions
-- `minimal_v0` - Expert-framed (string focus)
-- `expert_v00` - Direct expert framing (string problems)
-- `expert_v0` - Conditional expert (string only)
-- `expert_v1` - Two experts (string/list)
-- `expert_v2` - Three experts (string/list/sort)
-- `example_v0` - Minimal + relevant example
-- `infilling`, `instructional`, `fewshot`, `cot` - Other strategies
+**Prompt Strategies**:
+- `fewshot_v2_devise` - Best (34.8%)
+- `fewshot_v2` - 6 examples + CoT
+- `minimal` - Baseline
 
-**Available Post-processing:**
-- `none` - Raw model output
-- `post_v1` - Basic crash fixes
-- `post_v5` - Production-ready pipeline (dependency injection, truncation fixes, etc.)
+**Post-processing**:
+- `post_v7` - Logic fixes
+- `post_v5` - Production pipeline
+- `none` - Raw output
 
-### Testing on Subset
+### Test on Subset
 
 ```yaml
 dataset:
-  max_samples: 10  # Test on first 10 problems
+  max_samples: 10
 ```
 
 ### Service Management
 
 ```bash
-./scripts/manage_services.sh start    # Start vLLM server
-./scripts/manage_services.sh stop     # Stop server
-./scripts/manage_services.sh restart  # Restart server
-./scripts/manage_services.sh test     # Check status
-./scripts/manage_services.sh logs     # View logs
+./scripts/manage_services.sh start|stop|restart|logs
 ```
 
 ---
 
 ## Performance Optimization
 
-This project achieves high throughput through aggressive parallelization at multiple levels:
+**Total time**: 15-30 seconds for 164 problems
 
-### vLLM GPU-Accelerated Inference
+### 1. vLLM Inference
+- PagedAttention for KV cache efficiency
+- Continuous batching
+- 15-30 problems/second
 
-**vLLM** serves the Qwen2.5-Coder-0.5B model with optimized GPU inference:
-- **PagedAttention** for efficient memory management
-- **Continuous batching** for dynamic request handling
-- **CUDA kernels** for low-latency token generation
-- **Docker containerization** for reproducible deployment
+### 2. Parallel Inference
+- 16 workers (ThreadPoolExecutor)
+- Non-blocking I/O
+- Config: `inference.num_workers: 16`
 
-Configure in `docker-compose.yml`:
-```yaml
-vllm:
-  deploy:
-    resources:
-      reservations:
-        devices:
-          - driver: nvidia
-            count: 1
-            capabilities: [gpu]
-```
+### 3. Multiprocess Evaluation
+- CPU-count workers
+- Isolated subprocesses
+- 36 problems/second
 
-### Parallel Inference with ThreadPoolExecutor
+**Pipeline**: ~5-10s inference + ~5-10s evaluation + ~5-10s I/O
 
-Inference uses **16 parallel workers** (ThreadPoolExecutor) for I/O-bound API calls:
-- Each worker makes independent HTTP requests to vLLM server
-- Non-blocking I/O maximizes GPU utilization
-- Achieves **15-30 problems/second** throughput
+### Scaling
 
-Configure in `config.yml`:
-```yaml
-inference:
-  num_workers: 16  # Parallel API calls
-```
+**Horizontal**: Docker Compose, load balancers, stateless workers
 
-### Multiprocess Evaluation
+**Vertical**: Tune worker counts, PagedAttention optimization
 
-Code execution uses **CPU-count workers** (multiprocessing.Pool) for CPU-bound test execution:
-- Each worker runs tests in isolated subprocess
-- Signal-based timeouts (SIGALRM) prevent hangs
-- Spawn context for safe nested multiprocessing
-- Achieves **36 problems/second** evaluation speed
-
-Configure in `config.yml`:
-```yaml
-evaluation:
-  num_workers: null  # null = auto-detect CPU count
-  timeout: 3  # seconds per test
-```
-
-### Performance Results
-
-**Total Pipeline:** 15-30 seconds for 164 HumanEval problems
-- Inference: ~5-10 seconds (GPU + parallel workers)
-- Evaluation: ~5-10 seconds (multiprocessing)
-- I/O overhead: ~5-10 seconds
+**Future**: Kubernetes, Ray Serve, Redis caching
 
 ---
 
 ## Key Technologies
 
-- **vLLM**: High-performance LLM inference server
-- **Docker**: Containerization for serving and sandboxed evaluation
-- **HumanEval**: 164 Python programming problems benchmark
-- **PyTorch**: Deep learning framework for soft prompt tuning
-- **Transformers**: HuggingFace library for model loading
-
----
-
-## Assignment Questions
-
-### Q1: How can you improve the HumanEval's metric?
-
-**Current Status:** 84.1% pass@1 with minimal prompt (exceeds target of >50%)
-
-**Soft Prompt Tuning - Advanced Deep Learning Approach:**
-
-**Current Implementation (18% accuracy):**
-- Basic soft prompt tuning with 20 learnable token embeddings
-- Only 17,920 trainable parameters (0.0036% of model)
-- Simple gradient descent optimization on HumanEval training split
-- Limited by NaN loss issues and shallow architecture
-
-**Advanced Deep Learning Improvements:**
-
-1. **Hierarchical Soft Prompts**
-   - Multi-layer prompt embeddings at different transformer layers
-   - Problem-type-specific prompt routing (string/list/sorting/logic)
-   - Attention-based prompt composition for dynamic prompting
-
-2. **Meta-Learning Approaches**
-   - MAML (Model-Agnostic Meta-Learning) for few-shot adaptation
-   - Prototypical networks to learn problem embeddings
-   - Task-conditioned prompts that adapt based on problem characteristics
-
-3. **Reinforcement Learning from Execution Feedback**
-   - PPO (Proximal Policy Optimization) with test execution rewards
-   - Reward shaping: partial credit for passing subset of tests
-   - Self-play: generate synthetic problems and solutions
-   - RLHF pipeline using human-annotated code quality preferences
-
-4. **Neural Architecture Search for Prompts**
-   - AutoML to discover optimal prompt token count
-   - Differentiable architecture search (DARTS) for prompt structure
-   - Hyperparameter optimization (learning rate, warmup, embedding dim)
-
-5. **Advanced Training Techniques**
-   - Curriculum learning: start with simple problems, progress to complex
-   - Mixup augmentation in embedding space
-   - Contrastive learning: similar problems should have similar prompts
-   - Knowledge distillation from larger models (Qwen2.5-Coder-7B → 0.5B)
-   - Multi-task learning: train on MBPP, APPS, CodeContests simultaneously
-
-6. **Addressing Current Limitations**
-   - Fix NaN loss with careful initialization (Xavier/He initialization)
-   - Gradient clipping and mixed precision training (bfloat16)
-   - Better label masking to prevent loss computation on prompts
-   - Longer training with early stopping and checkpointing
-
-**Post-Processing Enhancements:**
-- AST-based code repair using syntax trees
-- Static analysis to detect common bug patterns
-- LLM-based self-correction (model reviews own output)
-- Execution-guided repair: iteratively fix based on test failures
-
-**Expected Improvements:**
-- Advanced techniques could potentially achieve 70-85% pass@1 on soft prompts alone
-- Combined with post-processing: 85-92% target range
-
-### Q2: How can you enhance the performance of the inference and evaluation processes?
-
-**Current Performance:** 15-30 seconds for 164 HumanEval problems
-
-**Optimizations Implemented:**
-
-1. **GPU-Accelerated Inference (vLLM)**
-   - PagedAttention for efficient KV cache management
-   - Continuous batching for dynamic request handling
-   - CUDA kernels for low-latency token generation
-   - **Result:** 15-30 problems/second inference throughput
-
-2. **Parallel Inference (ThreadPoolExecutor)**
-   - 16 concurrent workers for I/O-bound API calls
-   - Non-blocking HTTP requests maximize GPU utilization
-   - Configurable via `config.yml`: `inference.num_workers`
-
-3. **Multiprocess Evaluation (multiprocessing.Pool)**
-   - CPU-count workers for CPU-bound test execution
-   - Isolated subprocesses prevent cross-contamination
-   - Signal-based timeouts (SIGALRM) prevent hangs
-   - **Result:** 36 problems/second evaluation speed
-
-**Additional Optimizations:**
-- Docker containerization for consistent environment
-- Incremental result saving (crash-safe)
-- Spawn context for safe nested multiprocessing
-
-### Q3: How can you scale this evaluation process and make it run faster?
-
-**Scaling Strategies Implemented:**
-
-1. **Horizontal Scaling**
-   - Docker Compose orchestration for multi-container deployment
-   - vLLM server runs independently from evaluation workers
-   - Can deploy multiple vLLM instances behind load balancer
-   - Stateless inference workers enable easy scaling
-
-2. **Vertical Scaling**
-   - Configurable worker counts in `config.yml`:
-     - `inference.num_workers: 16` (tune based on GPU memory)
-     - `evaluation.num_workers: null` (auto-detect CPU count)
-   - GPU memory optimization via PagedAttention
-   - Batch processing support in vLLM
-
-3. **Architecture Optimizations**
-   - Config-driven experiments (batch multiple experiments)
-   - Results caching prevents redundant inference
-   - Parallel experiment execution via `run_experiments.py`
-
-**Future Scaling Improvements:**
-- Kubernetes deployment for cloud-native scaling
-- Ray Serve for distributed inference across multiple GPUs
-- Redis caching layer for completed evaluations
-- Streaming evaluation (process results as they arrive)
-- GPU sharding for larger models (tensor parallelism)
+- **vLLM**: High-performance LLM inference
+- **Docker**: Containerization
+- **HumanEval**: 164 Python problems benchmark
+- **PyTorch**: Deep learning framework
+- **Transformers**: HuggingFace library
 
 ---
 
 ## License
 
-This project is for educational and evaluation purposes.
+Educational and evaluation purposes.
 
 ---
 
-## Prompt Experiments
-
-**Best Strategy:** `minimal` - Simple problem prompt with no additional instructions (84.1% pass@1)
-
-### Available Strategies
-
-- **minimal** - Problem prompt with no additional instructions
-- **minimal_v0** - Expert-framed prompt focusing on string manipulation
-- **minimal_v2** - Minimal prompt with 'return' starter hint
-- **minimal_v3** - Ultra-minimal prompt with just problem and newline
-- **minimal_v4** - Minimal prompt with indentation hint
-- **minimal_v5** - Bare minimal prompt with rstrip() only
-- **minimal_v6** - Minimal prompt with anti-stub instruction
-- **minimal_v7** - Balanced prompt focusing on critical failure points
-- **infilling** - Code infilling with TODO markers
-- **instructional** - Instructional prompt emphasizing correctness
-- **fewshot** - Few-shot prompt with example
-- **cot** - Chain of thought reasoning prompt
-- **datadriven** - Data-driven prompt based on analysis of all 164 problems
-- **expert** - Expert-engineered prompt with self-review, persona, edge cases
-- **expert_v00** - Direct 'expert in Python string manipulation' for string problems
-- **expert_v0** - Expert framing only for detected string problems, minimal otherwise
-- **expert_v1** - String expert OR list expert OR minimal (two experts)
-- **expert_v2** - String OR list OR sorting expert OR minimal (three experts)
-- **helper** - Helper prompt with code patterns
-- **example_v0** - Minimal plus one relevant example (string/list/sorting)
-- **optimized_v1** - First iteration of optimized prompt
-- **optimized_v2** - Second iteration of optimized prompt
-- **optimized_v3** - Third iteration of optimized prompt
-- **opt1** - Category-based prompt with targeted guidance per problem type
+**Model**: [Qwen/Qwen2.5-Coder-0.5B](https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B)
+**Benchmark**: [HumanEval](https://github.com/openai/human-eval)

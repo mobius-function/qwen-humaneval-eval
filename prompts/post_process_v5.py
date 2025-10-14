@@ -4,7 +4,7 @@ Post-processing V5 - Production-ready code cleaning pipeline.
 This module provides robust post-processing for model-generated code with:
 - Safe markdown removal
 - Precise dependency injection (no duplicates)
-  * is_prime, is_palindrome, reverse, product, is_balanced, prod_sign
+  * is_prime, is_palindrome, reverse, product, is_balanced, prod_sign, factorial
 - Dynamic parameter extraction for targeted fixes
 - Enhanced truncated code detection and repair
   * Missing colons on control flow statements
@@ -112,6 +112,18 @@ def inject_dependencies_v5(code: str) -> str:
     if n < 0: return -1
     return 0"""
         code = prod_sign_func + "\n\n" + code
+
+    # Add factorial() function for factorial calculation
+    if "factorial(" in code and not re.search(r"def\s+factorial\s*\(", code):
+        # Check if math.factorial is already imported
+        if "from math import" not in code or "import math" not in code:
+            factorial_func = """def factorial(n):
+    if n <= 1: return 1
+    result = 1
+    for i in range(2, n + 1):
+        result *= i
+    return result"""
+            code = factorial_func + "\n\n" + code
 
     return code
 

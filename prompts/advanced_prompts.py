@@ -1,6 +1,7 @@
 """Advanced prompt templates for better code generation."""
 
 import re
+import json
 from prompts.code_completion import create_minimal_prompt_v2, create_minimal_v0, create_minimal_v2, create_minimal_v3, create_minimal_v4, create_minimal_v5, create_minimal_v6, create_robust_prompt, create_expert_v00, create_expert_v0, create_expert_v1, create_expert_v2, create_example_v0
 
 
@@ -21,24 +22,1327 @@ def create_infilling_prompt(problem: str) -> str:
     return prompt
 
 
-def create_fewshot_prompt(problem: str) -> str:
+def create_fewshot_v1_prompt(problem: str) -> str:
     """
-    Few-shot prompt with example to guide the model.
+    Few-shot prompt v1 with optimized subset of examples.
+    Targets most common failure patterns with fewer examples to avoid token limits.
 
     Args:
         problem: Function signature and docstring
 
     Returns:
-        Formatted prompt with example
+        Formatted prompt with curated examples
     """
-    example = '''Example:
-    def add(a: int, b: int) -> int:
-        """Add two numbers."""
-        return a + b
+    examples = '''Here are examples of correct Python function implementations:
 
-    Now complete this function:
-    '''
-    prompt = f"{example}\n{problem}"
+from typing import List, Optional
+
+Example 1:
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find the maximum number in a list."""
+    if not numbers:
+        return None
+    max_val = numbers[0]
+    for num in numbers[1:]:
+        if num > max_val:
+            max_val = num
+    return max_val
+
+Example 2:
+def count_vowels(text: str) -> int:
+    """Count vowels in a string (case-insensitive)."""
+    vowels = 'aeiouAEIOU'
+    count = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+Example 3:
+def remove_duplicates(items: List[int]) -> List[int]:
+    """Remove duplicates from list while preserving order."""
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+Example 4:
+def reverse_words(sentence: str) -> str:
+    """Reverse the order of words in a sentence."""
+    if not sentence:
+        return ""
+    words = sentence.split()
+    reversed_words = words[::-1]
+    return " ".join(reversed_words)
+
+Example 5:
+def filter_positive_even(numbers: List[int]) -> List[int]:
+    """Return only positive even numbers from the list."""
+    result = []
+    for num in numbers:
+        if num > 0 and num % 2 == 0:
+            result.append(num)
+    return result
+
+Example 6:
+def is_perfect_square(n: int) -> bool:
+    """Check if a number is a perfect square."""
+    if n < 0:
+        return False
+    if n == 0:
+        return True
+    i = 1
+    while i * i <= n:
+        if i * i == n:
+            return True
+        i += 1
+    return False
+
+Now implement this function completely:
+
+'''
+    prompt = f"{examples}{problem}"
+    return prompt
+
+
+def create_fewshot_v2_prompt(problem: str) -> str:
+    """
+    Few-shot prompt v2 with chain of thought reasoning instructions.
+    Same 6 examples as v1 but adds CoT guidance for step-by-step thinking.
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Formatted prompt with examples and CoT instructions
+    """
+    examples = '''Here are examples of correct Python function implementations:
+
+from typing import List, Optional
+
+Example 1:
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find the maximum number in a list."""
+    if not numbers:
+        return None
+    max_val = numbers[0]
+    for num in numbers[1:]:
+        if num > max_val:
+            max_val = num
+    return max_val
+
+Example 2:
+def count_vowels(text: str) -> int:
+    """Count vowels in a string (case-insensitive)."""
+    vowels = 'aeiouAEIOU'
+    count = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+Example 3:
+def remove_duplicates(items: List[int]) -> List[int]:
+    """Remove duplicates from list while preserving order."""
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+Example 4:
+def reverse_words(sentence: str) -> str:
+    """Reverse the order of words in a sentence."""
+    if not sentence:
+        return ""
+    words = sentence.split()
+    reversed_words = words[::-1]
+    return " ".join(reversed_words)
+
+Example 5:
+def filter_positive_even(numbers: List[int]) -> List[int]:
+    """Return only positive even numbers from the list."""
+    result = []
+    for num in numbers:
+        if num > 0 and num % 2 == 0:
+            result.append(num)
+    return result
+
+Example 6:
+def is_perfect_square(n: int) -> bool:
+    """Check if a number is a perfect square."""
+    if n < 0:
+        return False
+    if n == 0:
+        return True
+    i = 1
+    while i * i <= n:
+        if i * i == n:
+            return True
+        i += 1
+    return False
+
+Now implement this function. Think through it step by step:
+1. Read the docstring carefully - what is the exact requirement?
+2. Identify edge cases from the examples
+3. Choose the right approach (iteration, recursion, built-ins)
+4. Implement the logic completely - no placeholders
+
+'''
+    prompt = f"{examples}{problem}"
+    return prompt
+
+
+def create_fewshot_v2_devise_prompt(problem: str) -> str:
+    """
+    Few-shot prompt v2_devise with explicit "devise algorithm" instruction.
+    Same 6 examples as v2 but asks model to devise the algorithm mentally before coding.
+
+    This approach forces structured thinking without requiring verbose algorithm output,
+    saving tokens while improving comprehension.
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Formatted prompt with examples and "devise algorithm" instructions
+    """
+    examples = '''Here are examples of correct Python function implementations:
+
+from typing import List, Optional
+
+Example 1:
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find the maximum number in a list."""
+    if not numbers:
+        return None
+    max_val = numbers[0]
+    for num in numbers[1:]:
+        if num > max_val:
+            max_val = num
+    return max_val
+
+Example 2:
+def count_vowels(text: str) -> int:
+    """Count vowels in a string (case-insensitive)."""
+    vowels = 'aeiouAEIOU'
+    count = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+Example 3:
+def remove_duplicates(items: List[int]) -> List[int]:
+    """Remove duplicates from list while preserving order."""
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+Example 4:
+def reverse_words(sentence: str) -> str:
+    """Reverse the order of words in a sentence."""
+    if not sentence:
+        return ""
+    words = sentence.split()
+    reversed_words = words[::-1]
+    return " ".join(reversed_words)
+
+Example 5:
+def filter_positive_even(numbers: List[int]) -> List[int]:
+    """Return only positive even numbers from the list."""
+    result = []
+    for num in numbers:
+        if num > 0 and num % 2 == 0:
+            result.append(num)
+    return result
+
+Example 6:
+def is_perfect_square(n: int) -> bool:
+    """Check if a number is a perfect square."""
+    if n < 0:
+        return False
+    if n == 0:
+        return True
+    i = 1
+    while i * i <= n:
+        if i * i == n:
+            return True
+        i += 1
+    return False
+
+Now implement the function. Think through the problem step by step. First, devise the logic to solve the problem and review it. Once satisfied with logic, go ahead and implement in Python.
+
+'''
+    prompt = f"{examples}{problem}"
+    return prompt
+
+
+def create_fewshot_v2_devise_def_v1_prompt(problem: str) -> str:
+    """
+    Few-shot prompt v2_devise_def_v1 with programming concept definitions.
+
+    Builds on fewshot_v2_devise by adding clear definitions of common programming
+    concepts that the model systematically misunderstands, based on failure analysis.
+
+    Key additions:
+    - Sorting (ascending/descending)
+    - Filtering vs all/any operations
+    - Checking all pairs (nested loops)
+    - Average vs median, range averages
+    - Generating N items (no hardcoding)
+    - Multiple delimiters
+    - Iteration direction (forward/backward)
+    - Rotations
+    - String concepts (palindrome, prefix, suffix)
+    - Math concepts (prime, factorial, GCD)
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Formatted prompt with concept definitions, examples, and instructions
+    """
+    definitions = '''PROGRAMMING CONCEPT DEFINITIONS - Study these carefully:
+
+1. SORTING
+   - sort() / sorted(): Arranges in ASCENDING order (smallest to largest)
+     Example: sorted([3,1,2]) → [1,2,3]
+   - sorted(arr, reverse=True): DESCENDING order (largest to smallest)
+     Example: sorted([3,1,2], reverse=True) → [3,2,1]
+
+2. FILTERING vs ALL/ANY
+   - filter(): Select elements that MATCH a condition
+   - all(): Check if ALL elements match (returns True/False)
+   - any(): Check if AT LEAST ONE element matches (returns True/False)
+
+3. CHECKING ALL PAIRS
+   - To check every pair (i,j) where i<j, use NESTED LOOPS:
+     for i in range(len(arr)):
+         for j in range(i+1, len(arr)):
+   - This checks EVERY possible pair, not just adjacent elements
+
+4. AVERAGE vs MEDIAN
+   - Average (mean): sum(arr) / len(arr)
+   - Average of range n to m: sum(range(n, m+1)) / (m-n+1)
+     NOT just (n+m)/2
+   - Median: SORT first, then return middle value
+
+5. GENERATING N ITEMS
+   - "Return n items" or "n levels" means: Loop EXACTLY n times
+   - Use: for i in range(n)
+   - Do NOT hardcode like [n, n+2, n+4]
+
+6. MULTIPLE DELIMITERS
+   - "Separated by X OR Y" means handle BOTH delimiters
+   - Normalize: s.replace(',', ' ').split() handles both comma and space
+
+7. ITERATION DIRECTION
+   - Forward: for i in range(n) → 0,1,2,...,n-1
+   - Backward: for i in range(n-1, -1, -1) → n-1,n-2,...,0
+   - Use backward to find LARGEST/LAST matching value
+
+8. ROTATIONS
+   - "Check all rotations" means try EVERY rotation
+   - for rotation in range(len(arr)):
+         rotated = arr[rotation:] + arr[:rotation]
+
+9. STRING CONCEPTS
+   - Palindrome: s == s[::-1]
+   - Prefix: Beginning → s[:n]
+   - Suffix: End → s[-n:] or s[len(s)-n:]
+   - Substring: Contiguous sequence → s[i:j]
+
+10. MATH CONCEPTS
+    - Prime: Number > 1 divisible only by 1 and itself
+    - Factorial: n! = 1×2×3×...×n
+    - GCD: Greatest Common Divisor (Euclidean algorithm)
+    - Sum: sum(arr)
+    - Product: Use loop with result *= x
+
+Now implement the function. Think through the problem step by step. First, devise the logic to solve the problem and review it. Once satisfied with logic, go ahead and implement in Python.
+
+'''
+    prompt = f"{definitions}{problem}"
+    return prompt
+
+
+def create_fewshot_v2_devise_def_v2_prompt(problem: str) -> str:
+    """
+    Few-shot prompt v2_devise_def_v2 - Optimized hybrid approach.
+
+    Combines:
+    - 4 carefully selected examples (most impactful patterns)
+    - 5 critical definitions with code snippets (common failure patterns)
+    - "Devise algorithm" instruction
+
+    Optimized for token efficiency while maximizing coverage of failure patterns.
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Formatted prompt with definitions, examples, and instructions
+    """
+    definitions = '''KEY PROGRAMMING PATTERNS - Study these carefully:
+
+1. CHECKING ALL PAIRS (not just adjacent elements)
+   for i in range(len(arr)):
+       for j in range(i+1, len(arr)):
+           # Now check arr[i] and arr[j]
+
+2. GENERATING N ITEMS (loop n times, NOT hardcode)
+   result = []
+   for i in range(n):  # Loop EXACTLY n times
+       result.append(current_value)
+       current_value += increment
+   return result
+
+3. AVERAGE OF RANGE (sum all values in range)
+   # Average from n to m: sum ALL numbers, then divide
+   avg = sum(range(n, m+1)) / (m - n + 1)
+   # NOT just (n + m) / 2
+
+4. ITERATION DIRECTION (backward to find largest)
+   # To find LARGEST value, iterate from high to low
+   for num in range(y, x-1, -1):  # Start from y, go down to x
+       if meets_condition(num):
+           return num  # First match is largest
+
+5. MULTIPLE DELIMITERS (handle BOTH)
+   # "Separated by comma OR space" means handle BOTH
+   s = s.replace(',', ' ')  # Normalize to single delimiter
+   words = s.split()  # Now split handles all whitespace
+   return words
+
+'''
+
+    examples = '''Here are examples of correct Python function implementations:
+
+from typing import List, Optional
+
+Example 1:
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find the maximum number in a list."""
+    if not numbers:
+        return None
+    max_val = numbers[0]
+    for num in numbers[1:]:
+        if num > max_val:
+            max_val = num
+    return max_val
+
+Example 2:
+def remove_duplicates(items: List[int]) -> List[int]:
+    """Remove duplicates from list while preserving order."""
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+Example 3:
+def reverse_words(sentence: str) -> str:
+    """Reverse the order of words in a sentence."""
+    if not sentence:
+        return ""
+    words = sentence.split()
+    reversed_words = words[::-1]
+    return " ".join(reversed_words)
+
+Example 4:
+def is_perfect_square(n: int) -> bool:
+    """Check if a number is a perfect square."""
+    if n < 0:
+        return False
+    if n == 0:
+        return True
+    i = 1
+    while i * i <= n:
+        if i * i == n:
+            return True
+        i += 1
+    return False
+
+Now implement the function. Think through the problem step by step. First, devise the logic to solve the problem and review it. Once satisfied with logic, go ahead and implement in Python.
+
+'''
+    prompt = f"{definitions}{examples}{problem}"
+    return prompt
+
+
+def create_fewshot_v11_prompt(problem: str) -> str:
+    """
+    Few-shot prompt v11 with chain of thought reasoning instructions.
+    Same as v2 but with doctest-style examples (>>> format) to align with HumanEval style.
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Formatted prompt with examples and CoT instructions
+    """
+    examples = '''Here are examples of correct Python function implementations:
+
+from typing import List, Optional
+
+Example 1:
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find the maximum number in a list.
+    >>> find_max([1, 2, 3, 4, 5])
+    5
+    >>> find_max([])
+    None
+    """
+    if not numbers:
+        return None
+    max_val = numbers[0]
+    for num in numbers[1:]:
+        if num > max_val:
+            max_val = num
+    return max_val
+
+Example 2:
+def count_vowels(text: str) -> int:
+    """Count vowels in a string (case-insensitive).
+    >>> count_vowels("hello")
+    2
+    >>> count_vowels("AEIOU")
+    5
+    """
+    vowels = 'aeiouAEIOU'
+    count = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+Example 3:
+def remove_duplicates(items: List[int]) -> List[int]:
+    """Remove duplicates from list while preserving order.
+    >>> remove_duplicates([1, 2, 2, 3, 1, 4])
+    [1, 2, 3, 4]
+    >>> remove_duplicates([])
+    []
+    """
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+Example 4:
+def reverse_words(sentence: str) -> str:
+    """Reverse the order of words in a sentence.
+    >>> reverse_words("hello world")
+    'world hello'
+    >>> reverse_words("")
+    ''
+    """
+    if not sentence:
+        return ""
+    words = sentence.split()
+    reversed_words = words[::-1]
+    return " ".join(reversed_words)
+
+Example 5:
+def filter_positive_even(numbers: List[int]) -> List[int]:
+    """Return only positive even numbers from the list.
+    >>> filter_positive_even([1, 2, 3, 4, -2, 0])
+    [2, 4]
+    >>> filter_positive_even([])
+    []
+    """
+    result = []
+    for num in numbers:
+        if num > 0 and num % 2 == 0:
+            result.append(num)
+    return result
+
+Example 6:
+def is_perfect_square(n: int) -> bool:
+    """Check if a number is a perfect square.
+    >>> is_perfect_square(16)
+    True
+    >>> is_perfect_square(15)
+    False
+    """
+    if n < 0:
+        return False
+    if n == 0:
+        return True
+    i = 1
+    while i * i <= n:
+        if i * i == n:
+            return True
+        i += 1
+    return False
+
+Now implement this function. Think through it step by step:
+1. Read the docstring carefully - what is the exact requirement?
+2. Identify edge cases from the examples
+3. Choose the right approach (iteration, recursion, built-ins)
+4. Implement the logic completely - no placeholders
+
+'''
+    prompt = f"{examples}{problem}"
+    return prompt
+
+
+def create_json_v1_prompt(problem: str) -> str:
+    """
+    Few-shot prompt with JSON-structured input format.
+    Organizes role, examples, instructions, and task as JSON keys.
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        JSON-formatted prompt with structured sections
+    """
+    prompt_structure = {
+        "role": "You are an expert Python programmer. Your goal is to write correct, efficient, and complete Python functions that pass all test cases.",
+        "examples": [
+            "def find_max(numbers: List[int]) -> Optional[int]:\n    \"\"\"Find the maximum number in a list.\n    >>> find_max([1, 2, 3, 4, 5])\n    5\n    >>> find_max([])\n    None\n    \"\"\"\n    if not numbers:\n        return None\n    max_val = numbers[0]\n    for num in numbers[1:]:\n        if num > max_val:\n            max_val = num\n    return max_val",
+            "def count_vowels(text: str) -> int:\n    \"\"\"Count vowels in a string (case-insensitive).\n    >>> count_vowels(\"hello\")\n    2\n    >>> count_vowels(\"AEIOU\")\n    5\n    \"\"\"\n    vowels = 'aeiouAEIOU'\n    count = 0\n    for char in text:\n        if char in vowels:\n            count += 1\n    return count",
+            "def remove_duplicates(items: List[int]) -> List[int]:\n    \"\"\"Remove duplicates from list while preserving order.\n    >>> remove_duplicates([1, 2, 2, 3, 1, 4])\n    [1, 2, 3, 4]\n    >>> remove_duplicates([])\n    []\n    \"\"\"\n    seen = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return result",
+            "def reverse_words(sentence: str) -> str:\n    \"\"\"Reverse the order of words in a sentence.\n    >>> reverse_words(\"hello world\")\n    'world hello'\n    >>> reverse_words(\"\")\n    ''\n    \"\"\"\n    if not sentence:\n        return \"\"\n    words = sentence.split()\n    reversed_words = words[::-1]\n    return \" \".join(reversed_words)",
+            "def filter_positive_even(numbers: List[int]) -> List[int]:\n    \"\"\"Return only positive even numbers from the list.\n    >>> filter_positive_even([1, 2, 3, 4, -2, 0])\n    [2, 4]\n    >>> filter_positive_even([])\n    []\n    \"\"\"\n    result = []\n    for num in numbers:\n        if num > 0 and num % 2 == 0:\n            result.append(num)\n    return result",
+            "def is_perfect_square(n: int) -> bool:\n    \"\"\"Check if a number is a perfect square.\n    >>> is_perfect_square(16)\n    True\n    >>> is_perfect_square(15)\n    False\n    \"\"\"\n    if n < 0:\n        return False\n    if n == 0:\n        return True\n    i = 1\n    while i * i <= n:\n        if i * i == n:\n            return True\n        i += 1\n    return False"
+        ],
+        "instructions": "Please think step by step:\n1. Read the docstring carefully - what is the exact requirement?\n2. Identify edge cases from the examples and description\n3. Choose the right approach (iteration, recursion, built-ins)\n4. Implement the logic completely - no placeholders",
+        "task": problem
+    }
+
+    return json.dumps(prompt_structure, indent=2)
+
+
+def create_fewshot_v4_prompt(problem: str) -> str:
+    """
+    Few-shot prompt v4 - Addresses critical failures from fewshot_v2 analysis.
+
+    Key improvements based on 34.1% success rate analysis:
+    1. Emphatic anti-placeholder warnings (addresses 60.2% placeholder failures)
+    2. 9 diverse examples including parsing, math, complex logic
+    3. Explicit edge case handling in every example
+    4. Self-verification checklist
+    5. Stronger directive language
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Optimized prompt targeting fewshot_v2 failure patterns
+    """
+    examples = '''Here are examples of CORRECT Python implementations with proper edge case handling:
+
+from typing import List, Optional
+
+Example 1: Edge case handling
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find the maximum number in a list."""
+    # Always check edge cases first
+    if not numbers:
+        return None
+    max_val = numbers[0]
+    for num in numbers[1:]:
+        if num > max_val:
+            max_val = num
+    return max_val
+
+Example 2: String manipulation
+def count_vowels(text: str) -> int:
+    """Count vowels in a string (case-insensitive)."""
+    if not text:
+        return 0
+    vowels = 'aeiouAEIOU'
+    count = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+Example 3: Data structures
+def remove_duplicates(items: List[int]) -> List[int]:
+    """Remove duplicates from list while preserving order."""
+    if not items:
+        return []
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+Example 4: Parsing/Bracket matching (common failure pattern)
+def is_balanced(brackets: str) -> bool:
+    """Check if brackets are balanced."""
+    if not brackets:
+        return True
+    stack = []
+    pairs = {'(': ')', '[': ']', '{': '}'}
+    for char in brackets:
+        if char in pairs:
+            stack.append(char)
+        elif char in pairs.values():
+            if not stack:
+                return False
+            if pairs[stack.pop()] != char:
+                return False
+    return len(stack) == 0
+
+Example 5: Mathematical sequences (common failure pattern)
+def collatz_steps(n: int) -> int:
+    """Count steps in Collatz sequence until reaching 1."""
+    if n <= 0:
+        return 0
+    if n == 1:
+        return 0
+    steps = 0
+    while n != 1:
+        if n % 2 == 0:
+            n = n // 2
+        else:
+            n = 3 * n + 1
+        steps += 1
+    return steps
+
+Example 6: Prime checking (common failure pattern)
+def is_prime(n: int) -> bool:
+    """Check if a number is prime."""
+    # Handle edge cases explicitly
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+    # Check odd divisors up to sqrt(n)
+    i = 3
+    while i * i <= n:
+        if n % i == 0:
+            return False
+        i += 2
+    return True
+
+Example 7: Complex logic with multiple conditions
+def classify_number(n: int) -> str:
+    """Classify number as negative, zero, positive_even, or positive_odd."""
+    if n < 0:
+        return "negative"
+    elif n == 0:
+        return "zero"
+    elif n % 2 == 0:
+        return "positive_even"
+    else:
+        return "positive_odd"
+
+Example 8: List filtering
+def filter_positive_even(numbers: List[int]) -> List[int]:
+    """Return only positive even numbers from the list."""
+    if not numbers:
+        return []
+    result = []
+    for num in numbers:
+        if num > 0 and num % 2 == 0:
+            result.append(num)
+    return result
+
+Example 9: String parsing
+def reverse_words(sentence: str) -> str:
+    """Reverse the order of words in a sentence."""
+    if not sentence:
+        return ""
+    words = sentence.split()
+    if not words:
+        return ""
+    return " ".join(words[::-1])
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOW IMPLEMENT THIS FUNCTION COMPLETELY:
+
+'''
+    instructions = '''
+IMPLEMENTATION CHECKLIST:
+1. ✓ Read the docstring carefully - what is the EXACT requirement?
+2. ✓ Identify ALL edge cases (empty inputs, None, zeros, negatives, boundaries)
+3. ✓ Handle edge cases FIRST at the top of the function
+4. ✓ Choose the right approach (iteration, recursion, data structures)
+5. ✓ Write complete, working code
+6. ✓ Return the correct type as specified in the function signature
+
+BEFORE SUBMITTING, VERIFY:
+✓ ALL edge cases from docstring are handled
+✓ Return type matches specification
+✓ All example test cases in docstring would pass
+
+Write your complete implementation below:
+'''
+
+    prompt = f"{examples}{problem}\n{instructions}"
+    return prompt
+
+
+def create_fewshot_v6_prompt(problem: str) -> str:
+    """
+    Few-shot prompt v6 - Pattern-based teaching approach + complete examples.
+
+    Combines pattern teaching with complete working examples from v2.
+
+    Based on fewshot_v2 failure analysis:
+    - 70% of failures are logic errors (wrong algorithm)
+    - Common patterns: hardcoding, wrong delimiters, character vs token iteration,
+      misunderstanding requirements, missing rotations, wrong direction iteration
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Pattern-based teaching prompt with examples
+    """
+    patterns = '''COMMON CODING PATTERNS - Learn these logic patterns:
+
+PATTERN 1: Generating N items (not hardcoding)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When problem says "return n items" or "n levels", you must use a loop.
+CORRECT APPROACH:
+    result = []
+    for i in range(n):  # Loop exactly n times
+        result.append(current_value)
+        current_value += increment
+    return result
+
+PATTERN 2: Multiple delimiters (OR logic)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When problem says "separated by comma OR space", handle BOTH delimiters.
+CORRECT APPROACH:
+    s = s.replace(',', ' ')  # Normalize to single delimiter
+    words = s.split()  # split() handles all whitespace
+    return words
+
+PATTERN 3: Token parsing (not character iteration)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When dealing with multi-character tokens like "o|" or ".|", split FIRST.
+CORRECT APPROACH:
+    tokens = music_string.split()  # Split into tokens first
+    mapping = {'o': 4, 'o|': 2, '.|': 1}
+    return [mapping[token] for token in tokens]
+
+PATTERN 4: Sum of digits (not counting positives)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"Sum of digits" means ADD the digits, not count positive numbers.
+CORRECT APPROACH:
+    digit_sum = sum(int(d) for d in str(abs(num)))
+    if num < 0:  # First digit negative for negative numbers
+        digit_sum = -int(str(num)[1]) + sum(int(d) for d in str(num)[2:])
+
+PATTERN 5: Checking ALL rotations (not just current state)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When problem involves rotation/shifting, check ALL possible rotations.
+CORRECT APPROACH:
+    for rotation in range(len(arr)):
+        rotated = arr[rotation:] + arr[:rotation]
+        if is_sorted(rotated):
+            return True
+    return False
+
+PATTERN 6: Finding maximum (iterate backwards)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When finding largest value in range, iterate from high to low.
+CORRECT APPROACH:
+    for num in range(y, x-1, -1):  # Start from y, go down to x
+        if meets_condition(num):
+            return num  # First match is largest
+
+PATTERN 7: Edge cases FIRST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Always handle special cases before main logic.
+CORRECT APPROACH:
+    if not input_data:  # Empty case
+        return default_value
+    if len(input_data) == 1:  # Single element
+        return special_case(input_data[0])
+    # Now handle general case
+    result = process(input_data)
+    return result
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Here are examples of correct Python function implementations:
+
+from typing import List, Optional
+
+Example 1:
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find the maximum number in a list."""
+    if not numbers:
+        return None
+    max_val = numbers[0]
+    for num in numbers[1:]:
+        if num > max_val:
+            max_val = num
+    return max_val
+
+Example 2:
+def count_vowels(text: str) -> int:
+    """Count vowels in a string (case-insensitive)."""
+    vowels = 'aeiouAEIOU'
+    count = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+Example 3:
+def remove_duplicates(items: List[int]) -> List[int]:
+    """Remove duplicates from list while preserving order."""
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+Example 4:
+def reverse_words(sentence: str) -> str:
+    """Reverse the order of words in a sentence."""
+    if not sentence:
+        return ""
+    words = sentence.split()
+    reversed_words = words[::-1]
+    return " ".join(reversed_words)
+
+Example 5:
+def filter_positive_even(numbers: List[int]) -> List[int]:
+    """Return only positive even numbers from the list."""
+    result = []
+    for num in numbers:
+        if num > 0 and num % 2 == 0:
+            result.append(num)
+    return result
+
+Example 6:
+def is_perfect_square(n: int) -> bool:
+    """Check if a number is a perfect square."""
+    if n < 0:
+        return False
+    if n == 0:
+        return True
+    i = 1
+    while i * i <= n:
+        if i * i == n:
+            return True
+        i += 1
+    return False
+
+Now implement this function. Think step by step to solve the problem:
+
+'''
+    prompt = f"{patterns}{problem}"
+    return prompt
+
+
+def create_fewshot_v5_prompt(problem: str) -> str:
+    """
+    Few-shot prompt v5 - Strategic targeting of high-volume, winnable classes.
+
+    Strategy: Focus on getting easy/medium classes to 70%+ rather than struggling with
+    impossible ones. Target 40%+ overall accuracy by winning big on high-volume classes.
+
+    Targets (total 85 cases):
+    - String transformation: 42 cases (31% → 70% = +16 cases)
+    - String search/match: 23 cases (43% → 70% = +6 cases)
+    - Math operations: 20 cases (35% → 60% = +5 cases)
+
+    Projected: 56 + 27 = 83/164 = 50.6% overall
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        6 strategic examples targeting high-volume, winnable classes
+    """
+    examples = '''Here are examples of correct Python function implementations:
+
+from typing import List, Optional
+
+Example 1: String transformation - case manipulation
+def capitalize_words(text: str) -> str:
+    """Capitalize first letter of each word."""
+    if not text:
+        return ""
+    return " ".join(word.capitalize() for word in text.split())
+
+Example 2: String search/match - character counting
+def count_vowels(text: str) -> int:
+    """Count vowels in string (case-insensitive)."""
+    if not text:
+        return 0
+    vowels = 'aeiouAEIOU'
+    return sum(1 for char in text if char in vowels)
+
+Example 3: Math operations - basic calculations
+def calculate_average(numbers: List[float]) -> float:
+    """Calculate average of numbers."""
+    if not numbers:
+        return 0.0
+    return sum(numbers) / len(numbers)
+
+Example 4: String transformation - palindrome checking
+def is_palindrome(text: str) -> bool:
+    """Check if string is palindrome (ignore case and non-alphanumeric)."""
+    cleaned = ''.join(c.lower() for c in text if c.isalnum())
+    return cleaned == cleaned[::-1]
+
+Example 5: List operations - filtering with conditions
+def filter_positive_even(numbers: List[int]) -> List[int]:
+    """Return only positive even numbers."""
+    return [n for n in numbers if n > 0 and n % 2 == 0]
+
+Example 6: Basic list operations with edge cases
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find maximum number in list."""
+    if not numbers:
+        return None
+    return max(numbers)
+
+Now implement this function. Think through it step by step:
+1. Read the docstring carefully - what is the exact requirement?
+2. Identify edge cases (empty inputs, None, special values)
+3. Choose the right approach (iteration, comprehension, built-ins)
+4. Implement the logic completely with working code
+
+'''
+    prompt = f"{examples}{problem}"
+    return prompt
+
+
+def create_fewshot_v3_prompt(problem: str) -> str:
+    """
+    Few-shot prompt v3 with chain of thought + self-critique and correction.
+    Same 6 examples as v1/v2 but adds instruction to review and fix the solution.
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Formatted prompt with examples, CoT, and self-correction instructions
+    """
+    examples = '''Here are examples of correct Python function implementations:
+
+from typing import List, Optional
+
+Example 1:
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find the maximum number in a list."""
+    if not numbers:
+        return None
+    max_val = numbers[0]
+    for num in numbers[1:]:
+        if num > max_val:
+            max_val = num
+    return max_val
+
+Example 2:
+def count_vowels(text: str) -> int:
+    """Count vowels in a string (case-insensitive)."""
+    vowels = 'aeiouAEIOU'
+    count = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+Example 3:
+def remove_duplicates(items: List[int]) -> List[int]:
+    """Remove duplicates from list while preserving order."""
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+Example 4:
+def reverse_words(sentence: str) -> str:
+    """Reverse the order of words in a sentence."""
+    if not sentence:
+        return ""
+    words = sentence.split()
+    reversed_words = words[::-1]
+    return " ".join(reversed_words)
+
+Example 5:
+def filter_positive_even(numbers: List[int]) -> List[int]:
+    """Return only positive even numbers from the list."""
+    result = []
+    for num in numbers:
+        if num > 0 and num % 2 == 0:
+            result.append(num)
+    return result
+
+Example 6:
+def is_perfect_square(n: int) -> bool:
+    """Check if a number is a perfect square."""
+    if n < 0:
+        return False
+    if n == 0:
+        return True
+    i = 1
+    while i * i <= n:
+        if i * i == n:
+            return True
+        i += 1
+    return False
+
+You are an expert Python programmer solving a coding problem.
+
+Let's approach this step by step:
+
+1. UNDERSTAND: Read the problem carefully
+   - What are the inputs? (examine function parameters and types)
+   - What's the output? (check return type and docstring)
+   - What are the requirements? (read docstring examples)
+   - What edge cases exist? (empty inputs, None, zeros, negatives, special values)
+
+2. PLAN: Break down the solution
+   - What algorithm or approach should I use?
+   - What data structures do I need?
+   - What are the key steps in order?
+   - How do I handle each edge case?
+
+3. IMPLEMENT: Write clean, correct code
+   - Use clear variable names
+   - Handle all edge cases first
+   - Implement the main logic
+   - Return the correct type
+
+Now complete this function:
+
+'''
+    prompt = f"{examples}{problem}"
+    return prompt
+
+
+def create_fewshot_prompt(problem: str) -> str:
+    """
+    Few-shot prompt with three examples demonstrating correct implementations.
+    Based on minimal_none error analysis to avoid common patterns:
+    - Indentation errors
+    - Infinite repetition
+    - Hardcoded solutions
+    - Undefined names
+    - Placeholder code
+
+    Args:
+        problem: Function signature and docstring
+
+    Returns:
+        Formatted prompt with examples
+    """
+    examples = '''Here are examples of correct Python function implementations:
+
+from typing import List, Optional
+
+Example 1:
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find the maximum number in a list."""
+    if not numbers:
+        return None
+    max_val = numbers[0]
+    for num in numbers[1:]:
+        if num > max_val:
+            max_val = num
+    return max_val
+
+Example 2:
+def count_vowels(text: str) -> int:
+    """Count vowels in a string (case-insensitive)."""
+    vowels = 'aeiouAEIOU'
+    count = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+Example 3:
+def remove_duplicates(items: List[int]) -> List[int]:
+    """Remove duplicates from list while preserving order."""
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+Example 4:
+def reverse_words(sentence: str) -> str:
+    """Reverse the order of words in a sentence."""
+    if not sentence:
+        return ""
+    words = sentence.split()
+    reversed_words = words[::-1]
+    return " ".join(reversed_words)
+
+Example 5:
+def filter_positive_even(numbers: List[int]) -> List[int]:
+    """Return only positive even numbers from the list."""
+    result = []
+    for num in numbers:
+        if num > 0 and num % 2 == 0:
+            result.append(num)
+    return result
+
+Example 6:
+def is_perfect_square(n: int) -> bool:
+    """Check if a number is a perfect square."""
+    if n < 0:
+        return False
+    if n == 0:
+        return True
+    i = 1
+    while i * i <= n:
+        if i * i == n:
+            return True
+        i += 1
+    return False
+
+Example 7:
+def number_sequence_inclusive(n: int) -> str:
+    """Return space-delimited numbers from 0 to n inclusive.
+    Note: 'upto n inclusive' means range(n + 1), not range(n)."""
+    numbers = []
+    for i in range(n + 1):
+        numbers.append(str(i))
+    return ' '.join(numbers)
+
+Example 8:
+def has_all_odd_digits(n: int) -> bool:
+    """Check if ALL digits in the number are odd.
+    This is NOT the same as checking if the number itself is odd.
+    Example: 135 has all odd digits, but 152 does not (2 is even)."""
+    if n < 0:
+        n = -n
+    for digit_char in str(n):
+        digit = int(digit_char)
+        if digit % 2 == 0:
+            return False
+    return True
+
+Example 9:
+def average_of_range(start: int, end: int) -> float:
+    """Calculate average of integers from start to end inclusive.
+    Must sum ALL numbers in the range, not just (start + end) / 2."""
+    if start > end:
+        return 0.0
+    total = sum(range(start, end + 1))
+    count = end - start + 1
+    return total / count
+
+Example 10:
+def find_from_right(text: str, condition) -> str:
+    """Find first character from the RIGHT side that meets a condition.
+    Use reverse iteration: range(len(text) - 1, -1, -1) goes right-to-left."""
+    for i in range(len(text) - 1, -1, -1):
+        if condition(text[i]):
+            return text[i]
+    return ""
+
+Example 11:
+def filter_primes(numbers: List[int]) -> List[int]:
+    """Return list of prime numbers from the input list.
+    A prime is divisible only by 1 and itself. Check from 2 to sqrt(n)."""
+    def is_prime(n):
+        if n <= 1:
+            return False
+        if n <= 3:
+            return True
+        if n % 2 == 0 or n % 3 == 0:
+            return False
+        i = 5
+        while i * i <= n:
+            if n % i == 0 or n % (i + 2) == 0:
+                return False
+            i += 6
+        return True
+
+    result = []
+    for num in numbers:
+        if is_prime(num):
+            result.append(num)
+    return result
+
+Example 12:
+def find_between_condition(text: str) -> str:
+    """Find first vowel that appears BETWEEN two consonants (not at start/end).
+    'Between' means: consonant before AND consonant after."""
+    vowels = 'aeiouAEIOU'
+    for i in range(1, len(text) - 1):
+        if text[i] in vowels and text[i-1] not in vowels and text[i+1] not in vowels:
+            return text[i]
+    return ""
+
+Example 13:
+def replace_consecutive_runs(text: str, char: str, threshold: int) -> str:
+    """Replace runs of a character that appear MORE than threshold times.
+    For example, 'aaa' with threshold=2 should be replaced, but 'aa' should not."""
+    result = []
+    i = 0
+    while i < len(text):
+        if text[i] == char:
+            count = 0
+            start = i
+            while i < len(text) and text[i] == char:
+                count += 1
+                i += 1
+            if count > threshold:
+                result.append('-')
+            else:
+                result.append(char * count)
+        else:
+            result.append(text[i])
+            i += 1
+    return ''.join(result)
+
+Example 14:
+def calculate_nested_product(n: int) -> int:
+    """Calculate product of factorials: 1! * 2! * 3! * ... * n!
+    Not just n!, but the PRODUCT of all factorials from 1 to n."""
+    def factorial(num):
+        if num <= 1:
+            return 1
+        result = 1
+        for i in range(2, num + 1):
+            result *= i
+        return result
+
+    product = 1
+    for i in range(1, n + 1):
+        product *= factorial(i)
+    return product
+
+Now implement this function completely:
+
+'''
+    prompt = f"{examples}{problem}"
     return prompt
 
 
@@ -199,14 +1503,16 @@ def post_process_code(raw_code: str, problem_prompt: str) -> str:
     return code
 
 
-# Import V5 post-processing
+# Import V5 and V7 post-processing
 from prompts.post_process_v5 import post_process_code_v5
+from prompts.post_process_v7 import post_process_code_v7
 
 # Post-processing strategies
 POSTPROCESS_STRATEGIES = {
     'none': lambda c, p, e=None: c,  # No post-processing - raw output
     'post_v1': lambda c, p=None, e=None: post_process_code(c, p) if p else clean_model_output(c),  # Fix crashes only - minimal intervention
     'post_v5': lambda c, p=None, e=None: post_process_code_v5(c, p) if p else c,  # V5: Production-ready pipeline with robust fixes
+    'post_v7': lambda c, p=None, e=None: post_process_code_v7(c, p) if p else c,  # V7: Logic error pattern fixes (hardcoded lists, delimiters, averages, rotations, etc.)
 }
 
 
@@ -816,7 +2122,18 @@ PROMPT_STRATEGIES = {
     'example_v0': create_example_v0,  # Smart prompt: minimal + relevant example (string/list/sorting)
     'infilling': create_infilling_prompt,
     'instructional': create_instructional_prompt,
-    'fewshot': create_fewshot_prompt,
+    'fewshot': create_fewshot_prompt,  # Few-shot with 14 examples (original, may be too long)
+    'fewshot_v1': create_fewshot_v1_prompt,  # Few-shot with 6 curated examples (optimized for token limits)
+    'fewshot_v2': create_fewshot_v2_prompt,  # Few-shot v1 + chain of thought instructions
+    'fewshot_v2_devise': create_fewshot_v2_devise_prompt,  # Few-shot v2 + explicit "devise algorithm" instruction
+    'fewshot_v2_devise_def_v1': create_fewshot_v2_devise_def_v1_prompt,  # Few-shot v2_devise + programming concept definitions
+    'fewshot_v2_devise_def_v2': create_fewshot_v2_devise_def_v2_prompt,  # Few-shot v2_devise + 4 examples + 5 key definitions with code snippets
+    'fewshot_v3': create_fewshot_v3_prompt,  # Few-shot v2 + self-critique and correction
+    'fewshot_v4': create_fewshot_v4_prompt,  # Few-shot v4: OPTIMIZED - 9 examples + anti-placeholder + edge cases (based on v2 failure analysis)
+    'fewshot_v5': create_fewshot_v5_prompt,  # Few-shot v5: Targeted examples for worst failure classes (100% failures: search, comparison, data structures)
+    'fewshot_v6': create_fewshot_v6_prompt,  # Few-shot v6: Pattern-based teaching (7 logic patterns instead of examples)
+    'fewshot_v11': create_fewshot_v11_prompt,  # Few-shot v2 with doctest-style examples (>>> format)
+    'json_v1': create_json_v1_prompt,  # Few-shot v2 + JSON-structured reasoning
     'cot': create_chain_of_thought_prompt,
     'datadriven': create_datadriven_prompt,
     'expert': create_expert_prompt,
