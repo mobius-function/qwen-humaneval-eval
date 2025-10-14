@@ -1,0 +1,75 @@
+Here are examples of correct Python function implementations:
+
+from typing import List, Optional
+
+Example 1:
+def find_max(numbers: List[int]) -> Optional[int]:
+    """Find the maximum number in a list."""
+    if not numbers:
+        return None
+    max_val = numbers[0]
+    for num in numbers[1:]:
+        if num > max_val:
+            max_val = num
+    return max_val
+
+Example 2:
+def count_vowels(text: str) -> int:
+    """Count vowels in a string (case-insensitive)."""
+    vowels = 'aeiouAEIOU'
+    count = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+Example 3:
+def remove_duplicates(items: List[int]) -> List[int]:
+    """Remove duplicates from list while preserving order."""
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+Example 4:
+def reverse_words(sentence: str) -> str:
+    """Reverse the order of words in a sentence."""
+    if not sentence:
+        return ""
+    words = sentence.split()
+    reversed_words = words[::-1]
+    return " ".join(reversed_words)
+
+Example 5:
+def filter_positive_even(numbers: List[int]) -> List[int]:
+    """Return only positive even numbers from the list."""
+    result = []
+    for num in numbers:
+        if num > 0 and num % 2 == 0:
+            result.append(num)
+    return result
+
+Example 6:
+def is_perfect_square(n: int) -> bool:
+    """Check if a number is a perfect square."""
+    if n < 0:
+        return False
+    if n == 0:
+        return True
+    i = 1
+    while i * i <= n:
+        if i * i == n:
+            return True
+        i += 1
+    return False
+
+Now implement this function. Think through it step by step:
+1. Read the docstring carefully - what is the exact requirement?
+2. Identify edge cases from the examples
+3. Choose the right approach (iteration, recursion, built-ins)
+4. Implement the logic completely - no placeholders
+
+{problem}

@@ -28,27 +28,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def create_dynamic_prompt_strategy(instructions: str):
-    """
-    Create a prompt function with given instructions.
-
-    Args:
-        instructions: Additional prompting instructions to append
-
-    Returns:
-        Prompt function compatible with PROMPT_STRATEGIES
-    """
-    def dynamic_prompt(problem: str) -> str:
-        if not instructions:
-            return problem  # Minimal prompt
-
-        return f"""{problem}
-
-# Important Guidelines:
-{instructions}
-"""
-
-    return dynamic_prompt
+# Note: create_dynamic_prompt_strategy() function removed - now creating template files directly
 
 
 def analyze_failures(results: List[Dict]) -> Dict:
@@ -286,21 +266,38 @@ def run_with_prompt(prompt_instructions: str, iteration: int) -> tuple:
     Returns:
         (completions_file, results, accuracy)
     """
-    # Register dynamic prompt strategy
-    from prompts.advanced_prompts import PROMPT_STRATEGIES
-    PROMPT_STRATEGIES['dynamic'] = create_dynamic_prompt_strategy(prompt_instructions)
+    # Create a temporary template file for this iteration
+    from prompts.prompt_loader import TEMPLATES_DIR
+    template_name = f"dynamic_iter_{iteration}"
+    template_path = TEMPLATES_DIR / f"{template_name}.txt"
+
+    # Build the template content
+    if not prompt_instructions:
+        template_content = "{problem}"  # Minimal prompt
+    else:
+        template_content = f"""{{problem}}
+
+# Important Guidelines:
+{prompt_instructions}
+"""
+
+    # Write the template file
+    with open(template_path, 'w', encoding='utf-8') as f:
+        f.write(template_content)
+
+    logger.info(f"Created dynamic template: {template_name}")
 
     # Output files
     completions_file = f"results/iter_{iteration}_completions.jsonl"
     results_file = f"results/iter_{iteration}_results.json"
     failures_log = f"logs/iter_{iteration}_failures.log"
 
-    # Run inference using existing function
+    # Run inference using the template
     logger.info(f"Running inference (iteration {iteration})...")
     run_inference(
         output_path=completions_file,
         temperature=0.2,
-        prompt_strategy='dynamic',
+        prompt_strategy=template_name,
         postprocess_strategy='none',
         num_workers=16,
     )

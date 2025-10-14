@@ -1,10 +1,6 @@
 # HumanEval Code Generation with Qwen2.5-Coder-0.5B
 
-## Project Objective
-
-This project evaluates the **Qwen/Qwen2.5-Coder-0.5B** model's code generation capabilities using the **HumanEval benchmark** (164 Python programming problems).
-
-**Achievement**: **34.8% pass@1** (57/164) using few-shot prompting with "devise algorithm" instruction + post-processing.
+**Achievement: 34.8% pass@1 (57/164 problems)** using few-shot prompting + post-processing
 
 ---
 
@@ -12,9 +8,8 @@ This project evaluates the **Qwen/Qwen2.5-Coder-0.5B** model's code generation c
 
 - [Quick Start](#quick-start)
 - [Results](#results)
-- [Prompt Evolution](#prompt-evolution-what-actually-mattered)
-- [Category Analysis](#category-analysis)
-- [Best Model Prompt](#best-model-prompt)
+- [Key Findings](#key-findings)
+- [Insights & Lessons](#insights--lessons)
 - [Project Architecture](#project-architecture)
 - [Advanced Usage](#advanced-usage)
 - [Performance Optimization](#performance-optimization)
@@ -50,153 +45,93 @@ Configure experiments in `config.yml`.
 
 ## Results
 
-### Best Model: fewshot_v2_devise_post_v7
+### Best Model: fewshot_v2_devise + post_v7
 
-**Performance**: 57/164 (34.8% pass@1)
+**Performance**: **57/164 (34.8% pass@1)**
 
 **Strategy**:
-- 6 few-shot examples (lists, strings, filtering, math, edge cases)
+- 6 carefully selected few-shot examples
 - "Devise algorithm" instruction (mental planning before coding)
 - Post-processing v7 (fixes delimiters, averages, rotations)
 
 ---
 
-### All Experiments
+### All Experiments Comparison
 
 | Experiment | Prompt Strategy | Post-processing | pass@1 | Passed/Total |
 |------------|----------------|-----------------|--------|--------------|
 | **fewshot_v2_devise_post_v7** | 6 examples + devise | post_v7 | **34.8%** | **57/164** |
 | fewshot_v2_devise_none | 6 examples + devise | none | 34.1% | 56/164 |
 | fewshot_v2_none | 6 examples + CoT | none | 33.5% | 55/164 |
-| def_v2_none | 5 definitions + 4 examples | none | 29.9% | 49/164 |
-| def_v2_post_v7 | 5 definitions + 4 examples | post_v7 | 29.9% | 49/164 |
-| def_v1_post_v7 | 10 definitions only | post_v7 | 23.2% | 38/164 |
-| def_v1_none | 10 definitions only | none | 22.6% | 37/164 |
-
-**Key Findings**:
-- **Examples work**: 56/164 (34.1%)
-- **Definitions fail**: 37/164 (22.6%) - worse than no prompting
-- **Hybrid fails**: 49/164 (29.9%) - definitions dilute examples
-- **CoT/Post-processing**: +2 cases combined
 
 ---
 
-## Prompt Evolution: What Actually Mattered
+### Category Analysis
 
-### Impact Hierarchy
+Performance breakdown across 12 problem categories:
 
-1. **Examples** → 56/164 (primary factor)
-2. **"Devise algorithm" instruction** → +1 case
-3. **Post-processing** → +1 case
+| Category | Success Rate | Passed/Total |
+|----------|--------------|--------------|
+| **Numeric Operations** | 100.0% | 1/1 |
+| **Boolean Logic** | 100.0% | 1/1 |
+| **List/Array Operations** | 48.6% | 17/35 |
+| **String Manipulation** | 39.6% | 21/53 |
+| **Parsing & Validation** | 37.5% | 3/8 |
+| **Mathematical Computation** | 37.5% | 3/8 |
+| **Other/Mixed** | 33.3% | 1/3 |
+| **Prime & Factorization** | 25.0% | 4/16 |
+| **Sorting & Ordering** | 18.8% | 6/32 |
+| **Filtering & Selection** | 0.0% | 0/2 |
+| **Comparison & Matching** | 0.0% | 0/2 |
+| **Counting & Aggregation** | 0.0% | 0/3 |
+| **TOTAL** | **34.8%** | **57/164** |
 
-**What didn't work**:
-- Definitions alone → 37/164 (worse than baseline)
-- Definitions + examples → 49/164 (worse than pure examples)
-
----
-
-### Evolution Phases
-
-**Phase 1: Baseline** (55/164)
-- 6 examples + CoT instructions
-
-**Phase 2: Mental Planning** (56/164)
-- Added "devise algorithm mentally" (+1 case)
-
-**Phase 3: Logic Fixes** (57/164) [BEST]
-- Added post-processing v7 (+1 case)
-
----
-
-### Failed Experiments
-
-#### Definitions Only: 37/164 (22.6%)
-
-**Hypothesis**: Explicit concept teaching helps comprehension
-
-**Result**: Performed worse than no prompting at all
-
-**Why it failed**:
-- 0.5B models lack abstraction capacity
-- Definitions confuse rather than guide
-- Pattern matching >> semantic reasoning
-
-#### Hybrid Approach: 49/164 (29.9%)
-
-**Hypothesis**: Combine definitions + examples
-
-**Result**: 7 cases worse than pure examples
-
-**Why it failed**: Definitions dilute example signal and waste tokens
+**Key Observations**:
+- **Strongest**: Simple list/array and string operations
+- **Weakest**: Complex algorithmic reasoning (counting, sorting, primes)
+- **107 failures** represent fundamental capacity limits at 0.5B scale
 
 ---
 
-### Key Takeaway
+## Key Findings
 
-> **For 0.5B models: Show, don't tell.**
-> Provide concrete examples. Skip definitions—they hurt performance.
+### What Worked
 
-**The 34.8% ceiling** represents fundamental reasoning limits. To go higher:
-- Use larger models (7B+)
-- Fine-tune on code generation
-- Add execution-based feedback
+**1. Examples are Essential** (Primary Impact)
+- Drove 55-56/164 success rate
+- Concrete demonstrations > instructions for 0.5B models
+- Strategic selection matters (see [Example Selection Strategy](#example-selection-strategy))
 
----
+**2. "Devise Algorithm" Instruction** (+1 case)
+- Mental planning before coding
+- Better than generic chain-of-thought prompting
+- Forces structured thinking without verbose output
 
-### Choosing Examples Strategically
+**3. Post-processing Logic Fixes** (+1 case)
+- Fixes systematic errors (delimiters, averages, rotations)
+- Target specific patterns identified in failure analysis
 
-**Critical insight**: 0.5B models cannot solve complex problems. Don't waste examples on unsolvable problem types.
-
-**Strategy**:
-1. **Analyze your task distribution** - What problems do you need to solve?
-2. **Match examples to solvable types** - List operations, string manipulation, filtering
-3. **Avoid complex examples** - Sorting, primes, nested recursion
-
-**Our 6 examples**:
-- Simple lists: find_max, remove_duplicates, filter_positive_even
-- Strings: count_vowels, reverse_words
-- Math: is_perfect_square
-
-These target problem types with 40-50% success rates. We avoid:
-- Sorting (18.8% success)
-- Primes (25% success)
-- Aggregation (0% success)
-
-**Impact**: Strategic example selection can improve pass@1 by 5-10 percentage points.
+**Impact Hierarchy**: Examples (55) → Devise instruction (+1) → Post-processing (+1) = **57/164**
 
 ---
 
-## Category Analysis
+### What Didn't Work
 
-Analysis of 164 problems across 12 categories:
+These approaches were tested but failed to improve performance:
 
-| Category | Success | Failure | Passed/Total |
-|----------|---------|---------|--------------|
-| **Counting & Aggregation** | 0.0% | 100.0% | 0/3 |
-| **Comparison & Matching** | 0.0% | 100.0% | 0/2 |
-| **Filtering & Selection** | 0.0% | 100.0% | 0/2 |
-| **Sorting & Ordering** | 18.8% | 81.2% | 6/32 |
-| **Prime & Factorization** | 25.0% | 75.0% | 4/16 |
-| **Other/Mixed** | 33.3% | 66.7% | 1/3 |
-| **Parsing & Validation** | 37.5% | 62.5% | 3/8 |
-| **Mathematical Computation** | 37.5% | 62.5% | 3/8 |
-| **String Manipulation** | 39.6% | 60.4% | 21/53 |
-| **List/Array Operations** | 48.6% | 51.4% | 17/35 |
-| **Numeric Operations** | 100.0% | 0.0% | 1/1 |
-| **Boolean Logic** | 100.0% | 0.0% | 1/1 |
-| **TOTAL** | **34.8%** | **65.2%** | **57/164** |
+- **Minimal prompt variations** - Adding `.rstrip()`, `\n`, expert framing, anti-stub instructions showed no improvement
+- **Ensemble expert prompts** - Categorizing problems and assigning Qwen expert roles for each category couldn't beat the simple minimal prompt
+- **JSON-structured prompts** - Sending examples/role/instructions via JSON format performed extremely poorly (<10/164); the model expects natural text, not structured data
+- **Data-driven iterative refinement** - Analyzing failure cases and iteratively updating the prompt based on common error patterns didn't yield improvements; the model's fundamental reasoning limitations couldn't be overcome with targeted instructions
 
-**Summary**:
-- **Worst**: Algorithmic reasoning (counting, sorting, primes)
-- **Best**: Simple list/array operations
-- **107 failures**: Fundamental capacity limits at 0.5B scale
+**Key Takeaway**: For 0.5B models, examples are everything. The 34.8% ceiling represents fundamental reasoning limits.
 
 ---
 
-## Best Model Prompt
+### The Winning Prompt
 
 <details>
-<summary><b>View full prompt</b></summary>
+<summary><b>View full prompt template</b></summary>
 
 ```python
 Here are examples of correct Python function implementations:
@@ -275,13 +210,54 @@ Once satisfied with logic, go ahead and implement in Python.
 ```
 
 **Components**:
-- 6 diverse examples (lists, strings, filtering, math, edge cases)
-- "Devise the logic" instruction (mental planning)
-- Step-by-step guidance
+- 6 diverse examples covering common patterns (lists, strings, filtering, math, edge cases)
+- "Devise the logic" instruction for mental planning
+- Step-by-step guidance without overwhelming the model
 
-**Post-processing v7**: Fixes delimiters, averages, rotations, token parsing
+**Post-processing v7**: Pattern-based fixes for delimiters, averages, rotations, token parsing
 
 </details>
+
+---
+
+## Insights & Lessons
+
+### Example Selection Strategy
+
+**Critical Insight**: 0.5B models cannot solve complex problems. Don't waste examples on unsolvable tasks.
+
+**Strategy**:
+1. **Analyze your task distribution** - What problems do you need to solve?
+2. **Match examples to solvable types** - List operations, string manipulation, filtering
+3. **Avoid complex examples** - Sorting, primes, nested recursion
+
+**Our 6 examples target**:
+- Simple lists: `find_max`, `remove_duplicates`, `filter_positive_even`
+- Strings: `count_vowels`, `reverse_words`
+- Math: `is_perfect_square`
+
+These align with problem types showing 40-50% success rates. We deliberately avoid:
+- Sorting (18.8% success)
+- Primes (25% success)
+- Aggregation (0% success)
+
+**Impact**: Strategic example selection can improve pass@1 by 5-10 percentage points.
+
+---
+
+### Model Capacity Limitations
+
+The **34.8% ceiling** represents fundamental reasoning limits for 0.5B models.
+
+**To go higher, you need**:
+- Larger models (7B+ parameters)
+- Fine-tuning on code generation tasks
+- Execution-based feedback loops
+- Multi-turn refinement strategies
+
+**0.5B models excel at**: Pattern matching, simple transformations, learned idioms
+
+**0.5B models struggle with**: Multi-step reasoning, algorithmic thinking, edge case handling
 
 ---
 
@@ -320,19 +296,19 @@ Status: Debugging NaN loss issues
 
 ```
 qwen-humaneval-eval/
-├── config.yml                    # Experiments
-├── docker-compose.yml            # vLLM server
+├── config.yml                    # Experiment configuration
+├── docker-compose.yml            # vLLM server setup
 ├── scripts/
-│   ├── inference.py              # Inference
-│   ├── run_evaluation.py         # Evaluation
-│   ├── run_experiments.py        # Runner
-│   └── train_soft_prompts.py    # Training
+│   ├── inference.py              # Model inference
+│   ├── run_evaluation.py         # HumanEval evaluation
+│   ├── run_experiments.py        # Experiment runner
+│   └── train_soft_prompts.py    # Soft prompt training
 ├── prompts/
-│   ├── advanced_prompts.py       # Strategies
-│   ├── post_process_v5.py        # Post-processing
-│   └── post_process_v7.py        # Logic fixes
-├── results/                      # Results
-└── logs/                         # Logs
+│   ├── advanced_prompts.py       # Prompt strategies
+│   ├── post_process_v5.py        # Production post-processing
+│   └── post_process_v7.py        # Logic error fixes
+├── results/                      # Experiment results
+└── logs/                         # Execution logs
 ```
 
 ---
@@ -352,69 +328,89 @@ experiments:
     temperature: 0.0
 ```
 
-**Prompt Strategies**:
-- `fewshot_v2_devise` - Best (34.8%)
-- `fewshot_v2` - 6 examples + CoT
-- `minimal` - Baseline
+**Available Prompt Strategies**:
+- `fewshot_v2_devise` - Best performer (34.8%)
+- `fewshot_v2` - 6 examples + CoT instructions
+- `fewshot_v1` - 6 examples only
+- `minimal` - Problem statement only (baseline)
 
-**Post-processing**:
-- `post_v7` - Logic fixes
-- `post_v5` - Production pipeline
-- `none` - Raw output
+**Available Post-processing**:
+- `post_v7` - Logic error pattern fixes
+- `post_v5` - Production-ready pipeline (imports, dependencies, truncation fixes)
+- `post_v1` - Basic crash fixes
+- `none` - Raw model output
+
+---
 
 ### Test on Subset
 
 ```yaml
 dataset:
-  max_samples: 10
+  max_samples: 10  # Test on first 10 problems
 ```
+
+---
 
 ### Service Management
 
 ```bash
-./scripts/manage_services.sh start|stop|restart|logs
+./scripts/manage_services.sh start    # Start vLLM server
+./scripts/manage_services.sh stop     # Stop server
+./scripts/manage_services.sh restart  # Restart server
+./scripts/manage_services.sh logs     # View logs
 ```
 
 ---
 
 ## Performance Optimization
 
-**Total time**: 15-30 seconds for 164 problems
+**Total pipeline time**: 15-30 seconds for 164 problems
 
-### 1. vLLM Inference
-- PagedAttention for KV cache efficiency
+### 1. vLLM Inference Engine
+- PagedAttention for efficient KV cache management
 - Continuous batching
-- 15-30 problems/second
+- Throughput: 15-30 problems/second
 
 ### 2. Parallel Inference
-- 16 workers (ThreadPoolExecutor)
+- 16 concurrent workers (ThreadPoolExecutor)
 - Non-blocking I/O
 - Config: `inference.num_workers: 16`
 
 ### 3. Multiprocess Evaluation
-- CPU-count workers
-- Isolated subprocesses
-- 36 problems/second
+- CPU-count parallel workers
+- Isolated subprocess execution
+- Throughput: ~36 problems/second
 
-**Pipeline**: ~5-10s inference + ~5-10s evaluation + ~5-10s I/O
+**Pipeline breakdown**: ~5-10s inference + ~5-10s evaluation + ~5-10s I/O
 
-### Scaling
+---
 
-**Horizontal**: Docker Compose, load balancers, stateless workers
+### Scaling Strategies
 
-**Vertical**: Tune worker counts, PagedAttention optimization
+**Horizontal Scaling**:
+- Docker Compose for multi-instance deployment
+- Load balancers
+- Stateless workers
 
-**Future**: Kubernetes, Ray Serve, Redis caching
+**Vertical Scaling**:
+- Tune worker counts based on hardware
+- PagedAttention optimization
+- Batch size tuning
+
+**Future Improvements**:
+- Kubernetes orchestration
+- Ray Serve for distributed inference
+- Redis caching for repeated queries
 
 ---
 
 ## Key Technologies
 
-- **vLLM**: High-performance LLM inference
-- **Docker**: Containerization
-- **HumanEval**: 164 Python problems benchmark
-- **PyTorch**: Deep learning framework
-- **Transformers**: HuggingFace library
+- **vLLM** - High-performance LLM inference engine
+- **Docker** - Containerization and deployment
+- **HumanEval** - 164 Python programming problems benchmark
+- **PyTorch** - Deep learning framework
+- **Transformers** - HuggingFace model library
 
 ---
 
@@ -425,4 +421,5 @@ Educational and evaluation purposes.
 ---
 
 **Model**: [Qwen/Qwen2.5-Coder-0.5B](https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B)
+
 **Benchmark**: [HumanEval](https://github.com/openai/human-eval)

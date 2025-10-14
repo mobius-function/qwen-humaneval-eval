@@ -14,7 +14,7 @@ from datasets import load_dataset
 from tqdm import tqdm
 
 from prompts.code_completion import create_completion_prompt, post_process_completion
-from prompts.advanced_prompts import PROMPT_STRATEGIES, POSTPROCESS_STRATEGIES
+from prompts.advanced_prompts import load_prompt, list_available_strategies, POSTPROCESS_STRATEGIES
 
 
 class VLLMInference:
@@ -211,10 +211,14 @@ def run_inference(
     inference = VLLMInference(api_url)
     main_logger.info(f"Initialized vLLM client at {api_url}")
 
-    # Get prompt function
-    if prompt_strategy not in PROMPT_STRATEGIES:
-        raise ValueError(f"Unknown prompt strategy: '{prompt_strategy}'. Available: {list(PROMPT_STRATEGIES.keys())}")
-    prompt_fn = PROMPT_STRATEGIES[prompt_strategy]
+    # Validate prompt strategy exists
+    available_strategies = list_available_strategies()
+    if prompt_strategy not in available_strategies:
+        raise ValueError(f"Unknown prompt strategy: '{prompt_strategy}'. Available: {available_strategies}")
+
+    # Create a prompt function using the loader
+    def prompt_fn(problem: str) -> str:
+        return load_prompt(prompt_strategy, problem)
 
     # Get postprocess function
     if postprocess_strategy not in POSTPROCESS_STRATEGIES:
