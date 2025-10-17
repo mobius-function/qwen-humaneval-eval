@@ -1,5 +1,6 @@
 services:
-  vllm-server:
+  # Base model for completion API
+  vllm-base:
     build:
       context: .
       dockerfile: docker/Dockerfile.vllm
@@ -9,9 +10,9 @@ services:
       - MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B
       - PORT=8000
       - HOST=0.0.0.0
+      - GPU_MEMORY_UTILIZATION=0.1
     volumes:
       - huggingface_cache:/root/.cache/huggingface
-    # GPU support - comment out for CPU-only mode
     deploy:
       resources:
         reservations:
@@ -25,7 +26,40 @@ services:
       timeout: 10s
       retries: 5
       start_period: 120s
-    shm_size: '2gb'  # Required for vLLM
+    shm_size: '2gb'
+
+  # Instruct model for chat API
+  vllm-instruct:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.vllm
+    ports:
+      - "8001:8001"
+    environment:
+      - MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B-Instruct
+      - PORT=8001
+      - HOST=0.0.0.0
+      - GPU_MEMORY_UTILIZATION=0.7
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    shm_size: '2gb'
+
+  # Legacy alias for vllm-base
+  vllm-server:
+    extends: vllm-base
 
   # Evaluation sandbox container
   eval-sandbox:

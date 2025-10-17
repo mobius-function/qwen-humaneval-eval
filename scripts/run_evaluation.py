@@ -192,8 +192,8 @@ def evaluate_completions(
     failed_results = [r for r in results if not r["passed"]]
     if failed_results:
         # Create failure log
-        log_dir = Path("logs")
-        log_dir.mkdir(exist_ok=True)
+        log_dir = Path("logs/evaluation")
+        log_dir.mkdir(parents=True, exist_ok=True)
         exp_name = output_path.stem.replace("evaluation_", "")
 
         # Save comprehensive log with ALL test cases

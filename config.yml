@@ -1,143 +1,140 @@
-# HumanEval Evaluation Configuration
-# This file defines all experiment configurations for running inference and evaluation
-
-# vLLM Server Settings
 vllm:
-  api_url: "http://localhost:8000/v1"
-  max_tokens: 1024  # Increased from 512 to allow longer implementations
+  # Model enablement - only one can be enabled at a time
+  completion_model_enabled: false
+  instruct_model_enabled: true
+
+  completion_api_url: http://localhost:8000/v1
+  completion_model: Qwen/Qwen2.5-Coder-0.5B
+  chat_api_url: http://localhost:8001/v1
+  chat_model: Qwen/Qwen2.5-Coder-0.5B-Instruct
+  max_tokens: 1024
   top_p: 1.0
-  stop_sequences:
-    - "\n\n"
-    - "\ndef "
-    - "\nclass "
 
-# Inference Settings
+  # Stop sequences for completion mode (Base model)
+  completion_stop_sequences:
+  - '\n\n'
+  - '\ndef '
+  - '\nclass '
+
+  # Stop sequences for chat mode (Instruct model)
+  # Empty list to avoid interfering with markdown code blocks
+  chat_stop_sequences: []
 inference:
-  num_workers: 16  # Parallel API calls (default: 16 for I/O-bound tasks)
-
-# Evaluation Settings
+  num_workers: 16
 evaluation:
-  timeout: 3  # Timeout per test in seconds
-  num_workers: null  # null = auto-detect CPU count
-  results_dir: "results"
-
-# Dataset Settings
+  timeout: 3
+  num_workers: null
+  results_dir: results
 dataset:
-  max_samples: null  # null = run on all 164 problems
-
-# Experiment Configurations
-# Each experiment defines a unique combination of prompt strategy and settings
-# Available prompt strategies: minimal, fewshot_v1, fewshot_v2, fewshot_v2_devise
-# Available post-processing: none, post_v1, post_v5, post_v7
+  max_samples: null
 experiments:
-  # Minimal Prompt Experiments
-  - name: "minimal_none"
-    description: "Minimal prompt (no post-processing)"
-    enabled: false
-    prompt_strategy: "minimal"
-    postprocess_strategy: "none"
-    temperature: 0.0
-    output_file: "completions_minimal_none.jsonl"
-    results_file: "evaluation_minimal_none.json"
-
-  - name: "minimal_post_v1"
-    description: "Minimal prompt with post_v1 post-processing (fix crashes only)"
-    enabled: false
-    prompt_strategy: "minimal"
-    postprocess_strategy: "post_v1"
-    temperature: 0.0
-    output_file: "completions_minimal_post_v1.jsonl"
-    results_file: "evaluation_minimal_post_v1.json"
-
-  - name: "minimal_post_v5"
-    description: "Minimal prompt with post_v5 post-processing (production-ready pipeline)"
-    enabled: false
-    prompt_strategy: "minimal"
-    postprocess_strategy: "post_v5"
-    temperature: 0.0
-    output_file: "completions_minimal_post_v5.jsonl"
-    results_file: "evaluation_minimal_post_v5.json"
-
-  - name: "minimal_post_v7"
-    description: "Minimal prompt with post_v7 post-processing (logic error fixes)"
-    enabled: false
-    prompt_strategy: "minimal"
-    postprocess_strategy: "post_v7"
-    temperature: 0.0
-    output_file: "completions_minimal_post_v7.jsonl"
-    results_file: "evaluation_minimal_post_v7.json"
-
-  # Few-shot v1 Experiments (6 curated examples)
-  - name: "fewshot_v1_none"
-    description: "Few-shot v1 (6 curated examples, no post-processing)"
-    enabled: false
-    prompt_strategy: "fewshot_v1"
-    postprocess_strategy: "none"
-    temperature: 0.0
-    output_file: "completions_fewshot_v1_none.jsonl"
-    results_file: "evaluation_fewshot_v1_none.json"
-
-  - name: "fewshot_v1_post_v5"
-    description: "Few-shot v1 (6 curated examples) with post_v5 post-processing"
-    enabled: false
-    prompt_strategy: "fewshot_v1"
-    postprocess_strategy: "post_v5"
-    temperature: 0.0
-    output_file: "completions_fewshot_v1_post_v5.jsonl"
-    results_file: "evaluation_fewshot_v1_post_v5.json"
-
-  - name: "fewshot_v1_post_v7"
-    description: "Few-shot v1 (6 examples) + post_v7 logic error fixes"
-    enabled: false
-    prompt_strategy: "fewshot_v1"
-    postprocess_strategy: "post_v7"
-    temperature: 0.0
-    output_file: "completions_fewshot_v1_post_v7.jsonl"
-    results_file: "evaluation_fewshot_v1_post_v7.json"
-
-  # Few-shot v2 Experiments (6 examples + chain of thought)
-  - name: "fewshot_v2_none"
-    description: "Few-shot v2 (6 examples + chain of thought, no post-processing)"
-    enabled: true
-    prompt_strategy: "fewshot_v2"
-    postprocess_strategy: "none"
-    temperature: 0.0
-    output_file: "completions_fewshot_v2_none.jsonl"
-    results_file: "evaluation_fewshot_v2_none.json"
-
-  - name: "fewshot_v2_post_v5"
-    description: "Few-shot v2 (6 examples + CoT) with post_v5 post-processing"
-    enabled: false
-    prompt_strategy: "fewshot_v2"
-    postprocess_strategy: "post_v5"
-    temperature: 0.0
-    output_file: "completions_fewshot_v2_post_v5.jsonl"
-    results_file: "evaluation_fewshot_v2_post_v5.json"
-
-  - name: "fewshot_v2_post_v7"
-    description: "Few-shot v2 (6 examples + CoT) + post_v7 logic error fixes"
-    enabled: false
-    prompt_strategy: "fewshot_v2"
-    postprocess_strategy: "post_v7"
-    temperature: 0.0
-    output_file: "completions_fewshot_v2_post_v7.jsonl"
-    results_file: "evaluation_fewshot_v2_post_v7.json"
-
-  # Few-shot v2_devise Experiments (6 examples + "devise algorithm" instruction) [BEST]
-  - name: "fewshot_v2_devise_none"
-    description: "Few-shot v2_devise (6 examples + explicit 'devise algorithm' instruction, no post-processing)"
-    enabled: true
-    prompt_strategy: "fewshot_v2_devise"
-    postprocess_strategy: "none"
-    temperature: 0.0
-    output_file: "completions_fewshot_v2_devise_none.jsonl"
-    results_file: "evaluation_fewshot_v2_devise_none.json"
-
-  - name: "fewshot_v2_devise_post_v7"
-    description: "Few-shot v2_devise (6 examples + 'devise algorithm') + post_v7 logic error fixes [BEST: 57/164 = 34.8%]"
-    enabled: true
-    prompt_strategy: "fewshot_v2_devise"
-    postprocess_strategy: "post_v7"
-    temperature: 0.0
-    output_file: "completions_fewshot_v2_devise_post_v7.jsonl"
-    results_file: "evaluation_fewshot_v2_devise_post_v7.json"
+- enabled: false
+  prompt_strategy: minimal
+  api_mode: completion
+  postprocess_strategy: none
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: minimal
+  api_mode: completion
+  postprocess_strategy: post_v1
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: minimal
+  api_mode: completion
+  postprocess_strategy: post_v5
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: minimal
+  api_mode: completion
+  postprocess_strategy: post_v7
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v1
+  api_mode: completion
+  postprocess_strategy: none
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v1
+  api_mode: completion
+  postprocess_strategy: post_v5
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v1
+  api_mode: completion
+  postprocess_strategy: post_v7
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v2
+  api_mode: completion
+  postprocess_strategy: none
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v2
+  api_mode: completion
+  postprocess_strategy: post_v5
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v2
+  api_mode: completion
+  postprocess_strategy: post_v7
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v2_devise
+  api_mode: completion
+  postprocess_strategy: none
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v2_devise
+  api_mode: completion
+  postprocess_strategy: post_v7
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v1
+  api_mode: completion
+  postprocess_strategy: none
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v1
+  api_mode: chat
+  postprocess_strategy: auto  # Auto-load from strategy folder
+  temperature: 0.0
+- enabled: true
+  prompt_strategy: fewshot_v1_cot
+  api_mode: chat
+  postprocess_strategy: auto  # Auto-load from strategy folder
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v1
+  api_mode: chat
+  postprocess_strategy: post_v5
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v1
+  api_mode: chat
+  postprocess_strategy: post_v7
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v2
+  api_mode: chat
+  postprocess_strategy: none
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v2
+  api_mode: chat
+  postprocess_strategy: post_v5
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v2
+  api_mode: chat
+  postprocess_strategy: post_v7
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v2_devise
+  api_mode: chat
+  postprocess_strategy: none
+  temperature: 0.0
+- enabled: false
+  prompt_strategy: fewshot_v2_devise
+  api_mode: chat
+  postprocess_strategy: post_v7
+  temperature: 0.0

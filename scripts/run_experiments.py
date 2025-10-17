@@ -28,6 +28,21 @@ def load_config(config_path: str = "config.yml") -> Dict:
         return yaml.safe_load(f)
 
 
+def generate_experiment_name(exp_config: Dict) -> str:
+    """
+    Auto-generate experiment name from configuration.
+
+    Format: {prompt_strategy}_{api_mode}_{postprocess_strategy}
+
+    Args:
+        exp_config: Experiment configuration dictionary
+
+    Returns:
+        Generated experiment name
+    """
+    return f"{exp_config['prompt_strategy']}_{exp_config['api_mode']}_{exp_config['postprocess_strategy']}"
+
+
 def setup_experiment_logging(exp_name: str) -> logging.Logger:
     """
     Setup logging for experiment runner.
@@ -38,16 +53,16 @@ def setup_experiment_logging(exp_name: str) -> logging.Logger:
     Returns:
         Logger instance
     """
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
+    log_dir = Path("logs/orchestration")
+    log_dir.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger(f"experiment.{exp_name}")
     logger.setLevel(logging.INFO)
     logger.handlers.clear()
 
-    # File handler
+    # File handler - always use timestamp for orchestration logs
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"experiment_run_{timestamp}.log" if exp_name == "all" else log_dir / f"{exp_name}_run.log"
+    log_file = log_dir / f"{timestamp}.log" if exp_name == "all" else log_dir / f"{exp_name}_{timestamp}.log"
     file_handler = logging.FileHandler(log_file, mode='w')
     file_handler.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -69,22 +84,21 @@ def run_single_experiment(exp_config: Dict, global_config: Dict, exp_logger: log
     Returns:
         Dictionary with experiment results
     """
-    exp_name = exp_config['name']
+    # Auto-generate experiment name
+    exp_name = generate_experiment_name(exp_config)
     results_dir = Path(global_config['evaluation']['results_dir'])
     results_dir.mkdir(exist_ok=True)
 
     console.print(f"\n[bold cyan]{'='*80}[/bold cyan]")
     console.print(f"[bold cyan]Experiment: {exp_name}[/bold cyan]")
-    console.print(f"[dim]{exp_config['description']}[/dim]")
     console.print(f"[bold cyan]{'='*80}[/bold cyan]\n")
 
     exp_logger.info(f"Starting experiment: {exp_name}")
-    exp_logger.info(f"Description: {exp_config['description']}")
-    exp_logger.info(f"Configuration: strategy={exp_config['prompt_strategy']}, postprocess={exp_config['postprocess_strategy']}, temp={exp_config['temperature']}")
+    exp_logger.info(f"Configuration: prompt={exp_config['prompt_strategy']}, api_mode={exp_config['api_mode']}, postprocess={exp_config['postprocess_strategy']}, temp={exp_config['temperature']}")
 
-    # Prepare paths
-    completions_file = str(results_dir / exp_config['output_file'])
-    results_file = str(results_dir / exp_config['results_file'])
+    # Auto-generate file paths
+    completions_file = str(results_dir / f"completions_{exp_name}.jsonl")
+    results_file = str(results_dir / f"evaluation_{exp_name}.json")
 
     # Step 1: Inference
     console.print("[bold yellow]Step 1: Running inference...[/bold yellow]")
@@ -92,7 +106,8 @@ def run_single_experiment(exp_config: Dict, global_config: Dict, exp_logger: log
     try:
         run_inference(
             output_path=completions_file,
-            api_url=global_config['vllm']['api_url'],
+            api_url=None,  # Auto-select based on api_mode from config
+            api_mode=exp_config['api_mode'],
             temperature=exp_config['temperature'],
             max_samples=global_config['dataset']['max_samples'],
             prompt_strategy=exp_config['prompt_strategy'],
@@ -100,7 +115,7 @@ def run_single_experiment(exp_config: Dict, global_config: Dict, exp_logger: log
             num_workers=global_config['inference']['num_workers'],
             max_tokens=global_config['vllm']['max_tokens'],
             top_p=global_config['vllm']['top_p'],
-            stop=global_config['vllm']['stop_sequences'],
+            # stop sequences are auto-loaded from config based on api_mode
         )
         exp_logger.info(f"Inference completed successfully: {completions_file}")
     except Exception as e:
@@ -111,6 +126,7 @@ def run_single_experiment(exp_config: Dict, global_config: Dict, exp_logger: log
             'status': 'failed',
             'error': str(e),
             'prompt_strategy': exp_config['prompt_strategy'],
+            'api_mode': exp_config['api_mode'],
             'postprocess_strategy': exp_config['postprocess_strategy'],
             'temperature': exp_config['temperature'],
         }
@@ -133,6 +149,7 @@ def run_single_experiment(exp_config: Dict, global_config: Dict, exp_logger: log
             'name': exp_name,
             'status': 'success',
             'prompt_strategy': exp_config['prompt_strategy'],
+            'api_mode': exp_config['api_mode'],
             'postprocess_strategy': exp_config['postprocess_strategy'],
             'temperature': exp_config['temperature'],
             'pass@1': eval_results['pass@1'],
@@ -149,6 +166,7 @@ def run_single_experiment(exp_config: Dict, global_config: Dict, exp_logger: log
             'status': 'failed',
             'error': str(e),
             'prompt_strategy': exp_config['prompt_strategy'],
+            'api_mode': exp_config['api_mode'],
             'postprocess_strategy': exp_config['postprocess_strategy'],
             'temperature': exp_config['temperature'],
         }
@@ -254,17 +272,19 @@ def main():
     if args.list:
         console.print("\n[bold]Available Experiments:[/bold]\n")
         for exp in config['experiments']:
+            exp_name = generate_experiment_name(exp)
             status = "✓ enabled" if exp['enabled'] else "✗ disabled"
-            console.print(f"  {exp['name']:<25} [{status}]")
-            console.print(f"    {exp['description']}")
+            console.print(f"  {exp_name:<40} [{status}]")
+            console.print(f"    Prompt: {exp['prompt_strategy']}, API: {exp['api_mode']}, Post: {exp['postprocess_strategy']}, Temp: {exp['temperature']}")
         return
 
     # Filter experiments
     experiments = config['experiments']
     if args.experiment:
-        experiments = [e for e in experiments if e['name'] == args.experiment]
+        experiments = [e for e in experiments if generate_experiment_name(e) == args.experiment]
         if not experiments:
             console.print(f"[bold red]Error: Experiment '{args.experiment}' not found[/bold red]")
+            console.print(f"[yellow]Use --list to see available experiments[/yellow]")
             sys.exit(1)
     else:
         experiments = [e for e in experiments if e['enabled']]
@@ -274,7 +294,7 @@ def main():
         return
 
     # Setup experiment logging
-    exp_logger = setup_experiment_logging("all" if len(experiments) > 1 else experiments[0]['name'])
+    exp_logger = setup_experiment_logging("all" if len(experiments) > 1 else generate_experiment_name(experiments[0]))
     exp_logger.info(f"Starting experiment run with {len(experiments)} experiments")
 
     # Run experiments
@@ -296,7 +316,7 @@ def main():
 
     exp_logger.info(f"All experiments completed. Summary saved to: {summary_file}")
     console.print(f"\n[dim]Summary saved to: {summary_file}[/dim]")
-    console.print(f"[dim]Experiment log saved to: logs/[/dim]")
+    console.print(f"[dim]Logs saved to: logs/orchestration/, logs/inference/, logs/evaluation/[/dim]")
 
 
 if __name__ == "__main__":

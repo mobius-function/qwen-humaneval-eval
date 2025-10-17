@@ -1,0 +1,4 @@
+{
+  "system": "You are a Python expert. Complete the function body ONLY - do not repeat imports, function signature, or docstring.",
+  "user": "Complete the function body for:\n\n{problem}\n\nOutput ONLY the implementation code that goes INSIDE the function (no imports, no signature, no docstring, no markdown, no explanations)."
+}

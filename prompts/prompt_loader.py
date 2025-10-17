@@ -1,12 +1,17 @@
-"""Prompt template loader with caching."""
+"""Prompt template loader with caching and strategy-specific post-processing."""
 
+import json
 import os
+import importlib.util
+import sys
 from pathlib import Path
 from functools import lru_cache
+from typing import Union, Dict, Callable
 
 
-# Get the templates directory
+# Get the directories
 TEMPLATES_DIR = Path(__file__).parent / "templates"
+STRATEGIES_DIR = Path(__file__).parent / "strategies"
 
 
 @lru_cache(maxsize=32)
@@ -27,47 +32,148 @@ def _load_template(template_path: str) -> str:
         return f.read()
 
 
-def load_prompt(strategy_name: str, problem: str) -> str:
+def load_prompt(strategy_name: str, problem: str, api_mode: str = "completion") -> Union[str, Dict[str, str]]:
     """
     Load a prompt template and substitute the problem.
+
+    Tries new strategies folder first, falls back to templates folder.
 
     Args:
         strategy_name: Name of the prompt strategy (e.g., 'minimal', 'fewshot_v1')
         problem: The HumanEval problem (function signature + docstring)
+        api_mode: API mode - "completion" or "chat"
 
     Returns:
-        Complete prompt with problem substituted
+        - For completion mode: string with problem substituted
+        - For chat mode: dict with 'system' and 'user' keys
 
     Raises:
         FileNotFoundError: If the strategy template doesn't exist
     """
-    template_path = TEMPLATES_DIR / f"{strategy_name}.txt"
+    if api_mode == "chat":
+        # Try new strategies folder first
+        strategy_path = STRATEGIES_DIR / "chat" / strategy_name / "prompt.json"
 
-    if not template_path.exists():
-        raise FileNotFoundError(
-            f"Prompt template '{strategy_name}' not found at {template_path}. "
-            f"Available templates: {list_available_strategies()}"
-        )
+        if not strategy_path.exists():
+            # Fall back to old templates folder
+            strategy_path = TEMPLATES_DIR / "chat" / f"{strategy_name}.json"
 
-    template = _load_template(str(template_path))
-    return template.format(problem=problem)
+        if not strategy_path.exists():
+            raise FileNotFoundError(
+                f"Chat prompt template '{strategy_name}' not found. "
+                f"Available templates: {list_available_strategies(api_mode)}"
+            )
+
+        template_content = _load_template(str(strategy_path))
+        template = json.loads(template_content)
+
+        # Substitute {problem} in the user message
+        return {
+            "system": template["system"],
+            "user": template["user"].format(problem=problem)
+        }
+    else:
+        # Try new strategies folder first
+        strategy_path = STRATEGIES_DIR / "completion" / strategy_name / "prompt.txt"
+
+        if not strategy_path.exists():
+            # Fall back to old templates folder
+            strategy_path = TEMPLATES_DIR / "completion" / f"{strategy_name}.txt"
+
+        if not strategy_path.exists():
+            raise FileNotFoundError(
+                f"Completion prompt template '{strategy_name}' not found. "
+                f"Available templates: {list_available_strategies(api_mode)}"
+            )
+
+        template = _load_template(str(strategy_path))
+        return template.format(problem=problem)
 
 
-def list_available_strategies() -> list[str]:
+def load_post_processor(strategy_name: str, api_mode: str = "completion") -> Callable:
     """
-    List all available prompt strategies.
+    Load the post-processing function for a specific strategy.
+
+    Args:
+        strategy_name: Name of the prompt strategy
+        api_mode: API mode - "completion" or "chat"
 
     Returns:
-        List of strategy names (without .txt extension)
+        Post-processing function (callable)
+
+    Raises:
+        FileNotFoundError: If no post-processor exists for this strategy
     """
-    if not TEMPLATES_DIR.exists():
-        return []
+    # Look for post_process.py in the strategy folder
+    if api_mode == "chat":
+        post_process_path = STRATEGIES_DIR / "chat" / strategy_name / "post_process.py"
+    else:
+        post_process_path = STRATEGIES_DIR / "completion" / strategy_name / "post_process.py"
 
-    templates = []
-    for file in TEMPLATES_DIR.glob("*.txt"):
-        templates.append(file.stem)  # stem removes the .txt extension
+    if not post_process_path.exists():
+        raise FileNotFoundError(
+            f"No post-processor found for strategy '{strategy_name}' at {post_process_path}"
+        )
 
-    return sorted(templates)
+    # Dynamically load the module
+    spec = importlib.util.spec_from_file_location(
+        f"post_process_{strategy_name}",
+        post_process_path
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    # Return the post_process function
+    if not hasattr(module, 'post_process'):
+        raise AttributeError(
+            f"Post-processor for '{strategy_name}' must have a 'post_process' function"
+        )
+
+    return module.post_process
+
+
+def list_available_strategies(api_mode: str = "completion") -> list[str]:
+    """
+    List all available prompt strategies for the given API mode.
+
+    Includes both new strategies folder and old templates folder.
+
+    Args:
+        api_mode: API mode - "completion" or "chat"
+
+    Returns:
+        List of strategy names (without file extensions)
+    """
+    strategies = set()
+
+    # Check new strategies folder
+    if api_mode == "chat":
+        strategies_path = STRATEGIES_DIR / "chat"
+        if strategies_path.exists():
+            for folder in strategies_path.iterdir():
+                if folder.is_dir() and (folder / "prompt.json").exists():
+                    strategies.add(folder.name)
+
+        # Fall back to old templates
+        templates_path = TEMPLATES_DIR / "chat"
+        if templates_path.exists():
+            for file in templates_path.glob("*.json"):
+                strategies.add(file.stem)
+    else:
+        strategies_path = STRATEGIES_DIR / "completion"
+        if strategies_path.exists():
+            for folder in strategies_path.iterdir():
+                if folder.is_dir() and (folder / "prompt.txt").exists():
+                    strategies.add(folder.name)
+
+        # Fall back to old templates
+        templates_path = TEMPLATES_DIR / "completion"
+        if templates_path.exists():
+            for file in templates_path.glob("*.txt"):
+                strategies.add(file.stem)
+
+    return sorted(list(strategies))
 
 
 def clear_cache():

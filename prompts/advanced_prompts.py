@@ -105,6 +105,8 @@ def post_process_code(raw_code: str, problem_prompt: str) -> str:
 # Import V5 and V7 post-processing
 from prompts.post_process_v5 import post_process_code_v5
 from prompts.post_process_v7 import post_process_code_v7
+from prompts.post_process_chat import post_process_chat
+from prompts.prompt_loader import load_post_processor
 
 # Post-processing strategies
 POSTPROCESS_STRATEGIES = {
@@ -112,7 +114,44 @@ POSTPROCESS_STRATEGIES = {
     'post_v1': lambda c, p=None, e=None: post_process_code(c, p) if p else clean_model_output(c),  # Fix crashes only - minimal intervention
     'post_v5': lambda c, p=None, e=None: post_process_code_v5(c, p) if p else c,  # V5: Production-ready pipeline with robust fixes
     'post_v7': lambda c, p=None, e=None: post_process_code_v7(c, p) if p else c,  # V7: Logic error pattern fixes (hardcoded lists, delimiters, averages, rotations, etc.)
+    'post_chat': lambda c, p=None, e=None: post_process_chat(c, p, e),  # Chat mode: Extract function body from complete functions
+    'auto': None,  # Placeholder - will be loaded dynamically from strategy folder
 }
+
+
+def get_postprocess_function(postprocess_strategy: str, prompt_strategy: str = None, api_mode: str = "completion"):
+    """
+    Get the post-processing function for a strategy.
+
+    Args:
+        postprocess_strategy: Name of post-processing strategy or 'auto'
+        prompt_strategy: Name of prompt strategy (required if postprocess_strategy is 'auto')
+        api_mode: API mode - "completion" or "chat"
+
+    Returns:
+        Post-processing function
+
+    Raises:
+        ValueError: If strategy not found
+    """
+    if postprocess_strategy == 'auto':
+        if not prompt_strategy:
+            raise ValueError("prompt_strategy required when postprocess_strategy is 'auto'")
+
+        try:
+            # Try to load strategy-specific post-processor
+            return load_post_processor(prompt_strategy, api_mode)
+        except FileNotFoundError:
+            # Fall back to 'none' if no strategy-specific processor exists
+            print(f"Warning: No post-processor found for strategy '{prompt_strategy}', using 'none'")
+            return POSTPROCESS_STRATEGIES['none']
+    else:
+        if postprocess_strategy not in POSTPROCESS_STRATEGIES:
+            raise ValueError(
+                f"Unknown postprocess strategy: '{postprocess_strategy}'. "
+                f"Available: {list(POSTPROCESS_STRATEGIES.keys())}"
+            )
+        return POSTPROCESS_STRATEGIES[postprocess_strategy]
 
 
 def enhanced_post_process(completion: str, prompt: str) -> str:

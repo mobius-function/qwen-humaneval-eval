@@ -1,6 +1,8 @@
 # HumanEval Code Generation with Qwen2.5-Coder-0.5B
 
-**Achievement: 34.8% pass@1 (57/164 problems)** using few-shot prompting + post-processing
+**NEW: 54.3% pass@1 (89/164)** using Instruct model + Chat API + AST post-processing
+
+**Previous Best: 34.8% pass@1 (57/164)** using Base model + Completion API + few-shot prompting
 
 ---
 
@@ -45,73 +47,159 @@ Configure experiments in `config.yml`.
 
 ## Results
 
-### Best Model: fewshot_v2_devise + post_v7
+### 🏆 NEW BEST: Instruct Model with Chat API
+
+**Performance**: **89/164 (54.3% pass@1)**
+
+**Model**: Qwen2.5-Coder-0.5B-**Instruct** (chat/dialogue model)
+
+**Strategy**:
+- Chat API with system + user messages
+- Direct instruction to complete function body only
+- Strategy-specific AST-based post-processing (extracts function body from complete functions)
+- **System Prompt**: "You are a Python expert. Complete the function body ONLY - do not repeat imports, function signature, or docstring."
+- **User Prompt**: Explicit task description with constraints on output format
+
+**Why It Works**:
+- ✅ Instruct models are trained for dialogue and helpful responses
+- ✅ Better at understanding natural language instructions
+- ✅ Model naturally generates complete, correct implementations (not just function bodies)
+- ✅ AST post-processing extracts the function body, combining correctness with proper format
+
+**The Winning Prompt**:
+
+<details>
+<summary><b>View prompt template (fewshot_v1)</b></summary>
+
+**System Message**:
+```
+You are a Python expert. Complete the function body ONLY - do not repeat imports, function signature, or docstring.
+```
+
+**User Message**:
+```
+Complete the function body for:
+
+{problem}
+
+Output ONLY the implementation code that goes INSIDE the function (no imports, no signature, no docstring, no markdown, no explanations).
+```
+
+**Key Components**:
+- **System prompt**: Clear instruction to complete function body only
+- **User prompt**: Explicit constraints on what to output (function body only, no extras)
+- **Post-processing**: AST-based extraction of function body from complete code (post_chat)
+- **Stop sequences**: Empty list (avoids interference with markdown code blocks)
+- **Why it works**: Despite explicit instructions to output only the body, the instruct model still generates complete functions. The AST post-processor extracts just the body, getting the best of both worlds: complete, correct implementations that are then properly formatted.
+
+</details>
+
+---
+
+### Previous Best: Base Model with Completion API
 
 **Performance**: **57/164 (34.8% pass@1)**
 
+**Model**: Qwen2.5-Coder-0.5B (base completion model)
+
 **Strategy**:
+- Completion API (Fill-In-Middle)
 - 6 carefully selected few-shot examples
 - "Devise algorithm" instruction (mental planning before coding)
 - Post-processing v7 (fixes delimiters, averages, rotations)
 
 ---
 
-### All Experiments Comparison
+### Model Comparison
 
-| Experiment | Prompt Strategy | Post-processing | pass@1 | Passed/Total |
-|------------|----------------|-----------------|--------|--------------|
-| **fewshot_v2_devise_post_v7** | 6 examples + devise | post_v7 | **34.8%** | **57/164** |
-| fewshot_v2_devise_none | 6 examples + devise | none | 34.1% | 56/164 |
-| fewshot_v2_none | 6 examples + CoT | none | 33.5% | 55/164 |
+| Model Type | API Mode | Best Strategy | pass@1 | Improvement |
+|------------|----------|---------------|--------|-------------|
+| **Instruct** | Chat | fewshot_v1 + post_chat | **54.3%** | **+19.5%** |
+| Base | Completion | fewshot_v2_devise + post_v7 | 34.8% | Baseline |
+| Base | Completion | fewshot_v1 + none | 32.9% | - |
+
+**Key Insight**: Instruct models outperform Base models significantly on HumanEval when using appropriate prompting and post-processing.
 
 ---
 
-### Category Analysis
+### All Experiments Comparison
 
-Performance breakdown across 12 problem categories:
+**Chat API (Instruct Model):**
+| Experiment | Prompt Strategy | Post-processing | pass@1 | Passed/Total |
+|------------|----------------|-----------------|--------|--------------|
+| **fewshot_v1_chat_post_chat** | Direct instruction | AST extraction | **54.3%** | **89/164** |
 
-| Category | Success Rate | Passed/Total |
-|----------|--------------|--------------|
-| **Numeric Operations** | 100.0% | 1/1 |
-| **Boolean Logic** | 100.0% | 1/1 |
-| **List/Array Operations** | 48.6% | 17/35 |
-| **String Manipulation** | 39.6% | 21/53 |
-| **Parsing & Validation** | 37.5% | 3/8 |
-| **Mathematical Computation** | 37.5% | 3/8 |
-| **Other/Mixed** | 33.3% | 1/3 |
-| **Prime & Factorization** | 25.0% | 4/16 |
-| **Sorting & Ordering** | 18.8% | 6/32 |
-| **Filtering & Selection** | 0.0% | 0/2 |
-| **Comparison & Matching** | 0.0% | 0/2 |
-| **Counting & Aggregation** | 0.0% | 0/3 |
-| **TOTAL** | **34.8%** | **57/164** |
+**Completion API (Base Model):**
+| Experiment | Prompt Strategy | Post-processing | pass@1 | Passed/Total |
+|------------|----------------|-----------------|--------|--------------|
+| fewshot_v2_devise_post_v7 | 6 examples + devise | post_v7 | 34.8% | 57/164 |
+| fewshot_v2_devise_none | 6 examples + devise | none | 34.1% | 56/164 |
+| fewshot_v2_none | 6 examples + CoT | none | 33.5% | 55/164 |
+| fewshot_v1_none | 6 examples only | none | 32.9% | 54/164 |
 
-**Key Observations**:
-- **Strongest**: Simple list/array and string operations
-- **Weakest**: Complex algorithmic reasoning (counting, sorting, primes)
-- **107 failures** represent fundamental capacity limits at 0.5B scale
+---
+
+### Chat Model Architecture Insights
+
+**Challenge**: Instruct models generate **complete functions** (imports, signature, docstring, implementation), but HumanEval expects **only the function body**.
+
+**Solution**: Strategy-specific AST-based post-processing
+1. Parse generated code with Python AST
+2. Locate the function definition
+3. Extract only the body (skip imports, signature, docstring)
+4. Return properly indented implementation
+
+**Before Post-Processing** (0% pass rate):
+```python
+# Prompt already has:
+def has_close_elements(...):
+    """docstring"""
+
+# Model generates:
+def has_close_elements(...):  ← Duplicate!
+    """docstring"""          ← Duplicate!
+    implementation
+
+# Result: Nested function definition = syntax error
+```
+
+**After Post-Processing** (54.3% pass rate):
+```python
+# Prompt has:
+def has_close_elements(...):
+    """docstring"""
+
+# Post-processor extracts only:
+    implementation           ← Just the body!
+
+# Result: Clean, correct code
+```
+
+**Key Learnings**:
+1. **Instruct models don't follow "function body only" instructions** - they're trained to provide complete solutions
+2. **AST parsing >> regex** for extracting function bodies from complete code
+3. **Different prompts need different post-processing** - thus the strategy-specific architecture
+4. **Stop tokens matter** - Qwen2.5-Coder-Instruct has ` ``` ` as default stop token, causing premature termination with markdown
 
 ---
 
 ## Key Findings
 
-### What Worked
+### Instruct vs Base Models
 
-**1. Examples are Essential** (Primary Impact)
-- Drove 55-56/164 success rate
-- Concrete demonstrations > instructions for 0.5B models
-- Strategic selection matters (see [Example Selection Strategy](#example-selection-strategy))
+**Instruct Model (54.3%)**:
+- ✅ Direct instruction works better than few-shot examples
+- ✅ AST post-processing is essential (model generates complete functions)
+- ✅ Simple, clear prompts outperform complex CoT strategies
+- ✅ Stop sequences must be empty (avoid interference with markdown)
 
-**2. "Devise Algorithm" Instruction** (+1 case)
-- Mental planning before coding
-- Better than generic chain-of-thought prompting
-- Forces structured thinking without verbose output
+**Base Model (34.8%)**:
+- ✅ Few-shot examples are critical (drove 55-56/164 success)
+- ✅ "Devise algorithm" instruction helps (+1 case)
+- ✅ Post-processing logic fixes help (+1 case)
+- ✅ Strategic example selection matters
 
-**3. Post-processing Logic Fixes** (+1 case)
-- Fixes systematic errors (delimiters, averages, rotations)
-- Target specific patterns identified in failure analysis
-
-**Impact Hierarchy**: Examples (55) → Devise instruction (+1) → Post-processing (+1) = **57/164**
+**Key Insight**: **Instruct models break the 0.5B ceiling** - jumping from 34.8% to 54.3% (+19.5%) by leveraging their instruction-following capabilities.
 
 ---
 
@@ -120,15 +208,13 @@ Performance breakdown across 12 problem categories:
 These approaches were tested but failed to improve performance:
 
 - **Minimal prompt variations** - Adding `.rstrip()`, `\n`, expert framing, anti-stub instructions showed no improvement
-- **Ensemble expert prompts** - Categorizing problems and assigning Qwen expert roles for each category couldn't beat the simple minimal prompt
-- **JSON-structured prompts** - Sending examples/role/instructions via JSON format performed extremely poorly (<10/164); the model expects natural text, not structured data
-- **Data-driven iterative refinement** - Analyzing failure cases and iteratively updating the prompt based on common error patterns didn't yield improvements; the model's fundamental reasoning limitations couldn't be overcome with targeted instructions
-
-**Key Takeaway**: For 0.5B models, examples are everything. The 34.8% ceiling represents fundamental reasoning limits.
+- **Ensemble expert prompts** - Categorizing problems and assigning Qwen expert roles for each category couldn't beat simple prompts
+- **JSON-structured prompts** - Sending examples/role/instructions via JSON format performed extremely poorly (<10/164); models expect natural text
+- **Data-driven iterative refinement** - Analyzing failure cases and iteratively updating prompts didn't yield improvements; fundamental model limitations remain
 
 ---
 
-### The Winning Prompt
+### Base Model Prompt (34.8% pass@1)
 
 <details>
 <summary><b>View full prompt template</b></summary>
@@ -222,42 +308,32 @@ Once satisfied with logic, go ahead and implement in Python.
 
 ## Insights & Lessons
 
-### Example Selection Strategy
+### Key Learnings
 
-**Critical Insight**: 0.5B models cannot solve complex problems. Don't waste examples on unsolvable tasks.
+**1. Model Selection Matters Most**
+- Instruct models (+19.5%) >> Few-shot prompting optimization (~2%)
+- The biggest gain came from switching model types, not prompt engineering
+- 0.5B Instruct models can achieve 54.3%, breaking the "Base model ceiling"
 
-**Strategy**:
-1. **Analyze your task distribution** - What problems do you need to solve?
-2. **Match examples to solvable types** - List operations, string manipulation, filtering
-3. **Avoid complex examples** - Sorting, primes, nested recursion
+**2. AST Post-Processing is Essential for Instruct Models**
+- Instruct models naturally generate complete functions (good for correctness)
+- HumanEval expects only function bodies (format mismatch)
+- AST-based extraction solves this: parse → extract body → return clean code
 
-**Our 6 examples target**:
-- Simple lists: `find_max`, `remove_duplicates`, `filter_positive_even`
-- Strings: `count_vowels`, `reverse_words`
-- Math: `is_perfect_square`
+**3. Simplicity Wins for Instruct Models**
+- Direct instructions > Few-shot examples
+- Simple prompts > Complex CoT strategies
+- Clear constraints in user prompt guide output format
 
-These align with problem types showing 40-50% success rates. We deliberately avoid:
-- Sorting (18.8% success)
-- Primes (25% success)
-- Aggregation (0% success)
+**4. Base Models Need Examples**
+- Few-shot examples drove 55-56/164 success for Base models
+- Strategic example selection helps (+5-10 percentage points)
+- "Devise algorithm" instruction adds +1 case improvement
 
-**Impact**: Strategic example selection can improve pass@1 by 5-10 percentage points.
-
----
-
-### Model Capacity Limitations
-
-The **34.8% ceiling** represents fundamental reasoning limits for 0.5B models.
-
-**To go higher, you need**:
-- Larger models (7B+ parameters)
-- Fine-tuning on code generation tasks
-- Execution-based feedback loops
-- Multi-turn refinement strategies
-
-**0.5B models excel at**: Pattern matching, simple transformations, learned idioms
-
-**0.5B models struggle with**: Multi-step reasoning, algorithmic thinking, edge case handling
+**5. Stop Sequences Matter**
+- Qwen2.5-Coder-Instruct has ` ``` ` as default stop token
+- Empty stop sequences avoid premature termination with markdown
+- Different models need different stop sequence configurations
 
 ---
 
@@ -287,8 +363,6 @@ uv run python scripts/run_evaluation.py
 ```
 
 Status: Debugging NaN loss issues
-
-[Guide](SOFT_PROMPTS_QUICKSTART.md) | [Docs](docs/soft_prompt_tuning.md)
 
 ---
 
@@ -329,12 +403,20 @@ experiments:
 ```
 
 **Available Prompt Strategies**:
-- `fewshot_v2_devise` - Best performer (34.8%)
+
+*Chat Mode (Instruct Model):*
+- `fewshot_v1` - **Best performer (54.3%)** - Direct instruction, AST post-processing
+- `fewshot_v1_cot` - CoT reasoning with algorithm verification (untested)
+
+*Completion Mode (Base Model):*
+- `fewshot_v2_devise` - **Best for Base (34.8%)** - 6 examples + devise instruction
 - `fewshot_v2` - 6 examples + CoT instructions
 - `fewshot_v1` - 6 examples only
 - `minimal` - Problem statement only (baseline)
 
 **Available Post-processing**:
+- `auto` - Strategy-specific (loads from strategy folder)
+- `post_chat` - AST-based extraction for chat models
 - `post_v7` - Logic error pattern fixes
 - `post_v5` - Production-ready pipeline (imports, dependencies, truncation fixes)
 - `post_v1` - Basic crash fixes

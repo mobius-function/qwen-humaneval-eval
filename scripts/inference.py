@@ -13,20 +13,30 @@ import requests
 from datasets import load_dataset
 from tqdm import tqdm
 
-from prompts.code_completion import create_completion_prompt, post_process_completion
-from prompts.advanced_prompts import load_prompt, list_available_strategies, POSTPROCESS_STRATEGIES
+from prompts.advanced_prompts import load_prompt, list_available_strategies, get_postprocess_function
 
 
 class VLLMInference:
     """Handle inference with vLLM OpenAI-compatible API."""
 
-    def __init__(self, api_url: str = "http://localhost:8000/v1"):
+    def __init__(self, api_url: str = "http://localhost:8000/v1", api_mode: str = "completion", model_name: str = None):
+        """
+        Initialize vLLM inference client.
+
+        Args:
+            api_url: Base URL for vLLM API
+            api_mode: API mode - "completion" or "chat"
+            model_name: Model name to use in API calls (optional)
+        """
         self.api_url = api_url
+        self.api_mode = api_mode
+        self.model_name = model_name or "Qwen/Qwen2.5-Coder-0.5B"
         self.completions_url = f"{api_url}/completions"
+        self.chat_url = f"{api_url}/chat/completions"
 
     def generate_completion(
         self,
-        prompt: str,
+        prompt,  # str for completion mode, dict for chat mode
         max_tokens: int = 512,
         temperature: float = 0.0,
         top_p: float = 1.0,
@@ -36,7 +46,7 @@ class VLLMInference:
         Generate code completion from the model.
 
         Args:
-            prompt: Input prompt
+            prompt: Input prompt (str for completion mode, dict with 'system'/'user' keys for chat mode)
             max_tokens: Maximum tokens to generate
             temperature: Sampling temperature
             top_p: Nucleus sampling parameter
@@ -46,25 +56,64 @@ class VLLMInference:
             Generated completion text
         """
         if stop is None:
-            stop = ["\n\n", "\ndef ", "\nclass ", "\nif "]
+            stop = []
 
-        payload = {
-            "model": "Qwen/Qwen2.5-Coder-0.5B",
-            "prompt": prompt,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "top_p": top_p,
-            "stop": stop,
-        }
+        if self.api_mode == "chat":
+            # Chat API mode - expect prompt to be a dict with system/user messages
+            if isinstance(prompt, dict):
+                messages = [
+                    {"role": "system", "content": prompt["system"]},
+                    {"role": "user", "content": prompt["user"]}
+                ]
+            else:
+                # Fallback if prompt is just a string
+                messages = [
+                    {"role": "system", "content": "You are an expert Python programmer."},
+                    {"role": "user", "content": prompt}
+                ]
 
-        try:
-            response = requests.post(self.completions_url, json=payload, timeout=60)
-            response.raise_for_status()
-            result = response.json()
-            return result["choices"][0]["text"]
-        except Exception as e:
-            print(f"Error during inference: {e}")
-            return ""
+            payload = {
+                "model": self.model_name,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+                "stop": stop,
+            }
+
+            try:
+                response = requests.post(self.chat_url, json=payload, timeout=60)
+                response.raise_for_status()
+                result = response.json()
+                return result["choices"][0]["message"]["content"]
+            except Exception as e:
+                print(f"Error during chat inference: {e}")
+                return ""
+        else:
+            # Completion API mode - expect prompt to be a string
+            if isinstance(prompt, dict):
+                # If we got a dict but we're in completion mode, just use the user content
+                prompt_str = prompt.get("user", str(prompt))
+            else:
+                prompt_str = prompt
+
+            payload = {
+                "model": self.model_name,
+                "prompt": prompt_str,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+                "stop": stop,
+            }
+
+            try:
+                response = requests.post(self.completions_url, json=payload, timeout=60)
+                response.raise_for_status()
+                result = response.json()
+                return result["choices"][0]["text"]
+            except Exception as e:
+                print(f"Error during completion inference: {e}")
+                return ""
 
 
 def load_humaneval() -> List[Dict]:
@@ -87,8 +136,8 @@ def setup_logging(output_path: str, prompt_strategy: str, postprocess_strategy: 
         Tuple of (main_logger, debug_logger)
     """
     # Create logs directory
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
+    log_dir = Path("logs/inference")
+    log_dir.mkdir(parents=True, exist_ok=True)
 
     # Derive experiment name from output path or use strategy names
     output_stem = Path(output_path).stem
@@ -177,6 +226,7 @@ def process_single_problem(
 def run_inference(
     output_path: str = "results/completions.jsonl",
     api_url: str = None,
+    api_mode: str = "completion",
     temperature: float = 0.0,
     max_samples: int = None,
     prompt_strategy: str = "infilling",
@@ -192,6 +242,7 @@ def run_inference(
     Args:
         output_path: Path to save completions
         api_url: vLLM API URL
+        api_mode: API mode - "completion" or "chat"
         temperature: Sampling temperature
         max_samples: Limit number of samples (for testing)
         prompt_strategy: Prompting strategy (minimal, infilling, instructional, fewshot, cot, etc.)
@@ -205,25 +256,50 @@ def run_inference(
     main_logger, _ = setup_logging(output_path, prompt_strategy, postprocess_strategy)
 
     # Initialize inference client
-    if api_url is None:
-        api_url = os.getenv("VLLM_API_URL", "http://localhost:8000/v1")
+    # Load config to get model-specific URLs and stop sequences
+    import yaml
+    try:
+        with open('config.yml', 'r') as f:
+            config = yaml.safe_load(f)
 
-    inference = VLLMInference(api_url)
-    main_logger.info(f"Initialized vLLM client at {api_url}")
+        if api_url is None:
+            if api_mode == "chat":
+                api_url = config['vllm'].get('chat_api_url', 'http://localhost:8001/v1')
+                model_name = config['vllm'].get('chat_model', 'Qwen/Qwen2.5-Coder-0.5B-Instruct')
+            else:
+                api_url = config['vllm'].get('completion_api_url', 'http://localhost:8000/v1')
+                model_name = config['vllm'].get('completion_model', 'Qwen/Qwen2.5-Coder-0.5B')
+        else:
+            model_name = None
+
+        # Load stop sequences from config if not provided
+        if stop is None:
+            if api_mode == "chat":
+                stop = config['vllm'].get('chat_stop_sequences', [])
+            else:
+                stop = config['vllm'].get('completion_stop_sequences', ['\n\n', '\ndef ', '\nclass '])
+    except Exception as e:
+        main_logger.warning(f"Could not load config: {e}, using defaults")
+        if api_url is None:
+            api_url = os.getenv("VLLM_API_URL", "http://localhost:8000/v1")
+        model_name = None
+        if stop is None:
+            stop = []
+
+    inference = VLLMInference(api_url, api_mode=api_mode, model_name=model_name)
+    main_logger.info(f"Initialized vLLM client at {api_url} with api_mode={api_mode}, model={model_name}")
 
     # Validate prompt strategy exists
-    available_strategies = list_available_strategies()
+    available_strategies = list_available_strategies(api_mode=api_mode)
     if prompt_strategy not in available_strategies:
         raise ValueError(f"Unknown prompt strategy: '{prompt_strategy}'. Available: {available_strategies}")
 
     # Create a prompt function using the loader
-    def prompt_fn(problem: str) -> str:
-        return load_prompt(prompt_strategy, problem)
+    def prompt_fn(problem: str):
+        return load_prompt(prompt_strategy, problem, api_mode=api_mode)
 
-    # Get postprocess function
-    if postprocess_strategy not in POSTPROCESS_STRATEGIES:
-        raise ValueError(f"Unknown postprocess strategy: '{postprocess_strategy}'. Available: {list(POSTPROCESS_STRATEGIES.keys())}")
-    postprocess_fn = POSTPROCESS_STRATEGIES[postprocess_strategy]
+    # Get postprocess function (auto-loads from strategy folder if postprocess_strategy is 'auto')
+    postprocess_fn = get_postprocess_function(postprocess_strategy, prompt_strategy, api_mode)
 
     # Load dataset
     problems = load_humaneval()
@@ -242,9 +318,7 @@ def run_inference(
     if num_workers is None:
         num_workers = 16  # Default for I/O-bound API calls
 
-    # Set default stop sequences if not provided
-    if stop is None:
-        stop = ["\n\n", "\ndef ", "\nclass ", "\nif "]
+    # Stop sequences are already loaded from config above
 
     # Generate completions in parallel
     print(f"\nGenerating completions for {len(problems)} problems...")
@@ -294,7 +368,7 @@ def run_inference(
 
     print(f"\nSaved {len(results)} completions to {output_path}")
     main_logger.info(f"Completed inference: {len(results)} completions saved to {output_path}")
-    main_logger.info(f"Log files: logs/{Path(output_path).stem.replace('completions_', '')}.log")
+    main_logger.info(f"Inference log: logs/inference/{Path(output_path).stem.replace('completions_', '')}.log")
 
     return results
 

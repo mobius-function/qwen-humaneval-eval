@@ -55,3 +55,4 @@ temp/
 # Soft prompt checkpoints (keep best only for reporting)
 soft_prompts/*.pt
 !soft_prompts/best_soft_prompts.pt
+*.log
