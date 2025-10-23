@@ -1,0 +1,115 @@
+\documentclass{beamer}
+
+% Theme choice
+\usetheme{Boadilla}
+\usecolortheme{dolphin}
+\useinnertheme{rectangles}
+\useoutertheme{infolines}
+
+% Font settings
+\usepackage{lmodern}
+\usefonttheme{professionalfonts}
+\usepackage[T1]{fontenc}
+
+% Custom bullet points
+\setbeamertemplate{itemize item}{\scriptsize\raise1.5pt\hbox{\donotcoloroutermaths$\blacksquare$}}
+\setbeamertemplate{itemize subitem}{\tiny\raise1.5pt\hbox{\donotcoloroutermaths$\bullet$}}
+
+% Make main items bold and slightly larger
+\setbeamerfont{itemize/enumerate body}{size=\normalsize}
+\setbeamerfont{itemize/enumerate subbody}{size=\small}
+
+% Title page information
+\title{Building Enterprise-Scale DocumentAI}
+\author{Sumit Gupta}
+\date{October 27, 2025}
+
+\begin{document}
+
+% Title slide
+\frame{\titlepage}
+
+% Table of contents
+\begin{frame}
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+% Section 1
+\section{Background}
+
+\begin{frame}
+\frametitle{Experience}
+\begin{itemize}
+    \item \textbf{Head of Machine Learning @ HighRadius (4 years)}
+    \begin{itemize}
+        \item Grew ML team from 6 to 32 members, while delivering 16.7x ARR growth (\$1.2M → \$20.1M)
+        \item Established AI/ML as key product differentiator; recognized by Gartner as a market-leader in O2C business
+        \item Collaborated with CXOs to drive AI expansion into sales (1.2x enterprise deal conversion), customer success (0.32x ticket resolution time), and marketing (1.25x lead conversion)
+    \end{itemize}
+    \item \textbf{Quant with Goldman Sachs and Morgan Stanley (5 years)}
+    \begin{itemize}
+        \item Created FinBERT: a BERT model pre-trained on 800K financial documents; fine-tuned signals based on FinBERT outperformed BERT-based signals with only 0.3x training samples
+        \item Devised ML algorithms to trade securities and price mortgage derivatives
+        \item Developed modeling framework to support \$1B+ annual trading
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Education}
+\begin{itemize}
+    \item \textbf{PhD Student @ UC Berkeley (withdrawn)}
+    \begin{itemize}
+        \item Devised k-SOTA activation function for extreme value distribution filtering negative signals
+        \item Developed algorithm to compress noisy data for training models with zero accuracy loss
+    \end{itemize}
+    \item \textbf{Indian Statistical Institute, Kolkata}
+    \begin{itemize}
+        \item Introduced Dirichlet Process for Dynamic Linear Models
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\section{Problem Statement}
+
+\begin{frame}
+\frametitle{DocumentAI Problem Statement}
+\begin{block}{Context}
+HighRadius operates in Order-to-Cash (O2C) business with 4 key business lines, each requiring extensive document processing:
+\end{block}
+
+\begin{itemize}
+    \item \textbf{Collections}: Parse customer correspondence and payment promises to prioritize collection activities
+    \item \textbf{Cash Application}: Extract payment details from remittance advice and bank statements to match payments to invoices
+    \item \textbf{Deductions}: Analyze backup documents (claims, chargebacks, proof of delivery) to validate and resolve deductions
+    \item \textbf{Credit}: Review financial statements and credit reports to assess customer creditworthiness
+\end{itemize}
+\end{frame}
+
+% Section 2
+\section{Main Content}
+\begin{frame}
+\frametitle{Main Topic}
+\begin{block}{Important Point}
+This is a highlighted block of text.
+\end{block}
+
+\begin{itemize}
+    \item Bullet point one
+    \item Bullet point two
+\end{itemize}
+\end{frame}
+
+% Section 3
+\section{Conclusion}
+\begin{frame}
+\frametitle{Conclusion}
+\begin{itemize}
+    \item Summary point 1
+    \item Summary point 2
+    \item Thank you!
+\end{itemize}
+\end{frame}
+
+\end{document}
